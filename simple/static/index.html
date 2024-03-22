@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Zig Javascript Bridge Demo</title>
+		<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
+	</head>
+	<body>
+		<script src="zjb_extract.js"></script>
+		<script>
+			const env = {
+				memory: new WebAssembly.Memory({initial: 1}),
+				__stack_pointer: 0,
+			};
+
+			const zjb = new Zjb();
+
+			(function() {
+				WebAssembly.instantiateStreaming(fetch("simple.wasm"), {env: env, zjb: zjb.imports}).then(function (results) {
+					zjb.instance = results.instance;
+					results.instance.exports.main();
+				});
+			})();
+		</script>
+	</body>
+</html>
