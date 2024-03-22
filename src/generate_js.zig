@@ -110,11 +110,6 @@ pub fn main() !void {
         inline for (builtins) |fn_bytes| {
             const open_quote = comptime std.mem.indexOf(u8, fn_bytes, "\"") orelse @compileError("bad buildin");
             const close_quote = comptime open_quote + 1 + (std.mem.indexOf(u8, fn_bytes[open_quote + 1 ..], "\"") orelse @compileError("bad buildin"));
-            // @compileLog(fn_bytes);
-            // @compileLog(open_quote);
-            // @compileLog(close_quote);
-            // @compileLog("foo");
-            // @compileLog(fn_bytes[open_quote..close_quote]);
             if (np.maybeExact(fn_bytes[open_quote + 1 .. close_quote])) {
                 try writer.writeAll(fn_bytes);
                 try writer.writeAll("\n");
