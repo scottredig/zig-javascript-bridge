@@ -78,17 +78,16 @@ pub fn main() !void {
         \\      return 0;
         \\    }
         \\    const result = this._next_handle;
-        \\    this._handles[result] = value;
+        \\    this._handles.set(result, value);
         \\    this._next_handle++;
         \\    return result;
         \\  }
         \\  constructor() {
         \\    this._decoder = new TextDecoder();
-        \\    this._handles = {
-        \\      0: null,
-        \\      1: window,
-        \\      2: "",
-        \\    };
+        \\    this._handles = new Map();
+        \\    this._handles.set(0, null);
+        \\    this._handles.set(1, window);
+        \\    this._handles.set(2, "");
         \\    this._next_handle = 3;
         \\    this.imports = {
         \\
@@ -211,16 +210,16 @@ pub fn main() !void {
 
         switch (method) {
             .get, .set, .call => {
-                try writer.writeAll("this._handles[id].");
+                try writer.writeAll("this._handles.get(id).");
                 try writer.writeAll(target);
             },
             .indexGet, .indexSet => {
-                try writer.writeAll("this._handles[id][");
+                try writer.writeAll("this._handles.get(id)[");
                 try writeArg(writer, func_args.items[0], 0);
                 try writer.writeAll("]");
             },
             .new => {
-                try writer.writeAll("new this._handles[id]");
+                try writer.writeAll("new (this._handles.get(id))");
             },
         }
 
@@ -273,7 +272,7 @@ fn writeArg(writer: anytype, arg: ArgType, i: usize) !void {
             try writer.print("Boolean(arg{d})", .{i});
         },
         .object => {
-            try writer.print("this._handles[arg{d}]", .{i});
+            try writer.print("this._handles.get(arg{d})", .{i});
         },
         .number => {
             try writer.print("arg{d}", .{i});
@@ -386,7 +385,7 @@ const builtins = [_][]const u8{
     \\      },
     ,
     \\      "release": (id) => {
-    \\        delete this._handles[id];
+    \\        this._handles.delete(id);
     \\      },
     ,
     \\      "dataview": (ptr, len) => {

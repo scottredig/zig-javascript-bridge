@@ -86,27 +86,26 @@ const Zjb = class {
       return 0;
     }
     const result = this._next_handle;
-    this._handles[result] = value;
+    this._handles.set(result, value);
     this._next_handle++;
     return result;
   }
   constructor() {
     this._decoder = new TextDecoder();
-    this._handles = {
-      0: null,
-      1: window,
-      2: "",
-    };
+    this._handles = new Map();
+    this._handles.set(0, null);
+    this._handles.set(1, window);
+    this._handles.set(2, "");
     this._next_handle = 3;
     this.imports = {
       "call_o_v_log": (arg0, id) => {
-        this._handles[id].log(this._handles[arg0]);
+        this._handles.get(id).log(this._handles.get(arg0));
       },
       "get_o_console": (id) => {
-        return this.new_handle(this._handles[id].console);
+        return this.new_handle(this._handles.get(id).console);
       },
       "release": (id) => {
-        delete this._handles[id];
+        this._handles.delete(id);
       },
       "string": (ptr, len) => {
         return this.new_handle(this._decoder.decode(new Uint8Array(this.instance.exports.memory.buffer, ptr, len)));
