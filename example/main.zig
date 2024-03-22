@@ -13,11 +13,23 @@ export fn main() void {
     }
 
     {
-        const arr = [_]u16{ 1, 2, 3 };
+        var arr = [_]u16{ 1, 2, 3 };
         const obj = zjb.u16ArrayView(&arr);
         defer obj.release();
 
         console.call("log", .{obj}, void);
+        console.call("log", .{obj.get("length", f64)}, void); // 3
+
+        // Update is visible in Javascript
+        arr[0] = 4;
+        console.call("log", .{obj}, void);
+        console.call("log", .{obj.get("length", f64)}, void); // 3
+
+        // Unless wasm's memory grows, which causes the ArrayView to be invalidated.
+        _ = @wasmMemoryGrow(0, 1);
+        arr[0] = 5;
+        console.call("log", .{obj}, void);
+        console.call("log", .{obj.get("length", f64)}, void); // 0
     }
 
     {

@@ -60,14 +60,20 @@ A few extra notes:
 
 `zjb.string([]const u8)` decodes the slice of memory as a utf-8 string, returning a Handle.  The string will NOT update to reflect changes in the slice in Zig.
 
-> [!CAUTION]
-> The \_ArrayView and dataView functions will accept const values.  If you pass one (such as []const u8), you are exposing Zig's memory to Javascript.  Changing the values from Javascript may lead to undefined behavior.  Zjb allows this as there are plenty of use cases which only read the data, and requiring non-const values throughout your program if they are eventually passed to Javascript isn't a desirable API.  It's up to you to be safe here.
-
-The \_ArrayView functions (`i8ArrayView`, `u8ArrayView`, etc) create the respective JavaScript typed array backed by the same memory as the Zig WASM instance.  Changes to the values in either Zig or Javascript will be visible in the other.
+The \_ArrayView functions (`i8ArrayView`, `u8ArrayView`, etc) create the respective JavaScript typed array backed by the same memory as the Zig WASM instance.
 
 `dataView` is similar in functionality to the ArrayView functions, but returns a DataView object.  Accepts any pointer or slice.
 
 > [!CAUTION]
+> There are three important notes about using the \_ArrayView and dataView functions:
+>
+> The \_ArrayView and dataView functions will accept const values.  If you pass one (such as []const u8), you are exposing Zig's memory to Javascript.  Changing the values from Javascript may lead to undefined behavior.  Zjb allows this as there are plenty of use cases which only read the data, and requiring non-const values throughout your program if they are eventually passed to Javascript isn't a desirable API.  It's up to you to be safe here.
+>
+> Changes to the values in either Zig or Javascript will be visible in the other.  HOWEVER, if the wasm memory grows for whatever reason (either through a direct @wasmMemoryGrow call or through allocators), all \_ArrayViews and DataViews are invalided, and their length will be zero.  You have (roughly speaking) three choices to handle this:
+> 1. Always create just before using, and release immediately after use.
+> 1. Never allocate after using these functions.
+> 1. Check their length before any use, if it does not match the intended length, release and recreate the Handle.
+>
 > Javascripts's DataView allows pulling out arbitrary values from offsets.  This may be useful for working with Zig structs from Javascript, however remember that Zig may reorder the fields for structs.  Use `extern struct` to be safe here.
 
 ## How
