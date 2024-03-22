@@ -124,7 +124,7 @@ pub const Handle = struct {
         comptime var extern_name: []const u8 = prefix;
 
         call_fields[fields.len] = .{
-            .name = "0",
+            .name = std.fmt.comptimePrint("{d}", .{fields.len}),
             .type = i32,
             .default_value = null,
             .is_comptime = false,
@@ -157,7 +157,6 @@ pub const Handle = struct {
 
         const F = @Type(.{ .Fn = .{
             .calling_convention = .C,
-            .alignment = 0,
             .is_generic = false,
             .is_var_args = false,
             .return_type = if (RetType == Handle) i32 else RetType,
