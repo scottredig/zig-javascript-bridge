@@ -2,7 +2,7 @@ const std = @import("std");
 const zjb = @import("zjb");
 
 export fn main() void {
-    const console = zjb.global().get("console", zjb.Handle);
+    const console = zjb.Handle.global.get("console", zjb.Handle);
     defer console.release();
 
     {
@@ -54,7 +54,7 @@ export fn main() void {
     }
 
     {
-        const map = zjb.global().get("Map", zjb.Handle);
+        const map = zjb.Handle.global.get("Map", zjb.Handle);
         defer map.release();
 
         const obj = map.new(.{});
@@ -75,7 +75,7 @@ export fn main() void {
     }
 
     {
-        const document = zjb.global().get("document", zjb.Handle);
+        const document = zjb.Handle.global.get("document", zjb.Handle);
         defer document.release();
 
         const id = zjb.string("canvas");

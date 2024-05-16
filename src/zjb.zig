@@ -58,19 +58,14 @@ pub fn dataView(data: anytype) Handle {
     }
 }
 
-pub fn global() Handle {
-    return @enumFromInt(1);
-}
-
 pub const Handle = enum(i32) {
+    null = 0,
+    global = 1,
+    empty_string = 2,
     _,
 
-    pub fn getNull() Handle {
-        return @enumFromInt(0);
-    }
-
     pub fn isNull(handle: Handle) bool {
-        return @intFromEnum(handle) == 0;
+        return handle == .null;
     }
 
     pub fn release(handle: Handle) void {
