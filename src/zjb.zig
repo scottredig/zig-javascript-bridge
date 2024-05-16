@@ -91,21 +91,21 @@ pub const Handle = enum(i32) {
         const name = comptime "set_" ++ shortTypeName(@TypeOf(value)) ++ "_" ++ field;
         const F = fn (mapType(@TypeOf(value)), Handle) callconv(.C) void;
         const f = @extern(*const F, .{ .library_name = "zjb", .name = name });
-        @call(.auto, f, .{ mapValue(value), handle });
+        @call(.auto, f, .{ value, handle });
     }
 
     pub fn indexGet(handle: Handle, arg: anytype, comptime RetType: type) RetType {
         const name = comptime "indexGet_" ++ shortTypeName(@TypeOf(arg)) ++ "_" ++ shortTypeName(RetType);
         const F = fn (mapType(@TypeOf(arg)), Handle) callconv(.C) mapType(RetType);
         const f = @extern(*const F, .{ .library_name = "zjb", .name = name });
-        return @call(.auto, f, .{ mapValue(arg), handle });
+        return @call(.auto, f, .{ arg, handle });
     }
 
     pub fn indexSet(handle: Handle, arg: anytype, value: anytype) void {
         const name = comptime "indexSet_" ++ shortTypeName(@TypeOf(arg)) ++ shortTypeName(@TypeOf(value));
         const F = fn (mapType(@TypeOf(arg)), mapType(@TypeOf(value)), Handle) callconv(.C) void;
         const f = @extern(*const F, .{ .library_name = "zjb", .name = name });
-        @call(.auto, f, .{ mapValue(arg), mapValue(value), handle });
+        @call(.auto, f, .{ arg, value, handle });
     }
 
     pub fn call(handle: Handle, comptime method: []const u8, args: anytype, comptime RetType: type) RetType {
@@ -117,19 +117,9 @@ pub const Handle = enum(i32) {
     }
 
     fn invoke(handle: Handle, args: anytype, comptime RetType: type, comptime prefix: []const u8, comptime suffix: []const u8) RetType {
-        const args_struct = comptime @typeInfo(@TypeOf(args)).Struct;
-        const fields = comptime args_struct.fields;
-        comptime var call_fields: [fields.len + 1]std.builtin.Type.StructField = undefined;
+        const fields = comptime @typeInfo(@TypeOf(args)).Struct.fields;
         comptime var call_params: [fields.len + 1]std.builtin.Type.Fn.Param = undefined;
         comptime var extern_name: []const u8 = prefix;
-
-        call_fields[fields.len] = .{
-            .name = std.fmt.comptimePrint("{d}", .{fields.len}),
-            .type = Handle,
-            .default_value = null,
-            .is_comptime = false,
-            .alignment = 0,
-        };
 
         call_params[fields.len] = .{
             .is_generic = false,
@@ -138,15 +128,6 @@ pub const Handle = enum(i32) {
         };
 
         inline for (fields, 0..) |field, i| {
-            // validateParam(field.type);
-            call_fields[i] = .{
-                .name = field.name,
-                .type = mapType(field.type),
-                .default_value = null,
-                .is_comptime = false,
-                .alignment = field.alignment,
-            };
-
             call_params[i] = .{
                 .is_generic = false,
                 .is_noalias = false,
@@ -162,26 +143,10 @@ pub const Handle = enum(i32) {
             .return_type = RetType,
             .params = &call_params,
         } });
-
         extern_name = extern_name ++ "_" ++ comptime shortTypeName(RetType) ++ suffix;
 
         const f = @extern(*const F, .{ .library_name = "zjb", .name = extern_name });
-
-        const S = @Type(.{ .Struct = .{
-            .layout = args_struct.layout,
-            .fields = &call_fields,
-            .decls = &.{},
-            .is_tuple = true,
-        } });
-
-        var s: S = undefined;
-        s[fields.len] = handle;
-
-        inline for (0..fields.len) |i| {
-            s[i] = args[i];
-        }
-
-        return @call(.auto, f, s);
+        return @call(.auto, f, args ++ .{handle});
     }
 };
 
@@ -206,10 +171,6 @@ fn mapType(comptime T: type) type {
         return f64;
     }
     return T;
-}
-
-fn mapValue(value: anytype) mapType(@TypeOf(value)) {
-    return value;
 }
 
 const zjb = struct {
