@@ -11,8 +11,10 @@ pub fn main() !void {
         return ExtractError.BadArguments;
     }
 
-    var funcs = std.ArrayList([]const u8).init(alloc);
-    defer funcs.deinit();
+    var imports = std.ArrayList([]const u8).init(alloc);
+    defer imports.deinit();
+    var exports = std.ArrayList([]const u8).init(alloc);
+    defer exports.deinit();
 
     {
         var file = try std.fs.openFileAbsolute(args[3], .{});
@@ -54,7 +56,21 @@ pub fn main() !void {
                         if (desc_type != 0) { // Not a function?
                             return ExtractError.ImportTypeNotSupported;
                         }
-                        try funcs.append(try alloc.dupe(u8, name));
+                        try imports.append(try alloc.dupe(u8, name));
+                    }
+                }
+            } else if (section_id == 7) {
+                const export_count = try r.getU32();
+                for (0..export_count) |_| {
+                    const name_length = try r.getU32();
+                    const name = try r.bytes(name_length);
+
+                    const desc_type = try r.byte();
+                    const desc_index = try r.getU32();
+                    _ = desc_index;
+
+                    if (desc_type == 0 and std.mem.startsWith(u8, name, "zjb_fn")) {
+                        try exports.append(try alloc.dupe(u8, name));
                     }
                 }
             } else {
@@ -63,7 +79,8 @@ pub fn main() !void {
         }
     }
 
-    std.sort.insertion([]const u8, funcs.items, {}, strBefore);
+    std.sort.insertion([]const u8, imports.items, {}, strBefore);
+    std.sort.insertion([]const u8, exports.items, {}, strBefore);
 
     var out_file = try std.fs.createFileAbsolute(args[1], .{});
     defer out_file.close();
@@ -84,11 +101,6 @@ pub fn main() !void {
         \\  }
         \\  constructor() {
         \\    this._decoder = new TextDecoder();
-        \\    this._handles = new Map();
-        \\    this._handles.set(0, null);
-        \\    this._handles.set(1, window);
-        \\    this._handles.set(2, "");
-        \\    this._next_handle = 3;
         \\    this.imports = {
         \\
     );
@@ -97,7 +109,7 @@ pub fn main() !void {
     var func_args = std.ArrayList(ArgType).init(alloc);
     defer func_args.deinit();
 
-    implement_functions: for (funcs.items) |func| {
+    implement_functions: for (imports.items) |func| {
         if (std.mem.eql(u8, lastFunc, func)) {
             continue;
         }
@@ -256,10 +268,115 @@ pub fn main() !void {
 
         try writer.writeAll(";\n      },\n");
     }
+    try writer.writeAll("    };\n"); // end imports
 
-    try writer.writeAll("    };\n");
-    try writer.writeAll("  }\n");
-    try writer.writeAll("};\n");
+    try writer.writeAll("    this.exports = {\n");
+
+    var export_names = std.ArrayList([]const u8).init(alloc);
+    defer export_names.deinit();
+
+    for (exports.items) |func| {
+        func_args.clearRetainingCapacity();
+
+        var np = NameParser{ .slice = func };
+        try np.must("zjb_fn_");
+
+        while (!(np.maybe("_") or np.slice.len == 0)) {
+            try func_args.append(try np.mustType());
+        }
+
+        const ret_type = try np.mustType();
+        try np.must("_");
+
+        const name = np.slice;
+        try export_names.append(name);
+
+        //////////////////////////////////
+
+        try writer.writeAll("      \"");
+        try writer.writeAll(name);
+        try writer.writeAll("\": (");
+
+        for (0..func_args.items.len) |i| {
+            if (i > 0) {
+                try writer.writeAll(", ");
+            }
+            try writer.print("arg{d}", .{i});
+        }
+
+        try writer.writeAll(") => {\n        ");
+        switch (ret_type) {
+            .void => {},
+            .bool => {
+                try writer.writeAll("return Boolean(");
+            },
+            .object => {
+                try writer.writeAll("return this._handles.get(");
+            },
+            .number => {
+                try writer.writeAll("return ");
+            },
+        }
+
+        try writer.writeAll("this.instance.exports.");
+        try writer.writeAll(func);
+        try writer.writeAll("(");
+
+        for (func_args.items, 0..) |arg, i| {
+            if (i > 0) {
+                try writer.writeAll(", ");
+            }
+            switch (arg) {
+                .void => {
+                    return ExtractError.InvalidExportedName;
+                },
+                .bool => {
+                    try writer.print("Boolean(arg{d})", .{i});
+                },
+                .object => {
+                    try writer.print("this.new_handle(arg{d})", .{i});
+                },
+                .number => {
+                    try writer.print("arg{d}", .{i});
+                },
+            }
+        }
+
+        try writer.writeAll(")");
+
+        switch (ret_type) {
+            .bool, .object => {
+                try writer.writeAll(")");
+            },
+            .void, .number => {},
+        }
+        try writer.writeAll(";\n      },\n");
+    }
+    try writer.writeAll("    };\n"); // end exports
+
+    try writer.writeAll(
+        \\    this._export_reverse_handles = {};
+        \\    this._handles = new Map();
+        \\    this._handles.set(0, null);
+        \\    this._handles.set(1, window);
+        \\    this._handles.set(2, "");
+        \\    this._handles.set(3, this._export_reverse_handles);
+        \\    this._next_handle = 4;
+        \\
+    );
+
+    for (export_names.items, 1..) |name, i| {
+        const handle = @as(i32, @intCast(i)) * -1;
+        try writer.print("    this._export_reverse_handles.{s} = {d};\n", .{ name, handle });
+        try writer.print("    this._handles.set({d}, this.exports.{s});\n", .{ handle, name });
+    }
+
+    try writer.writeAll(
+        \\  }
+        \\};
+        \\
+    );
+
     try out_file.sync();
 }
 

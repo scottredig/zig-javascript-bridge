@@ -62,6 +62,7 @@ pub const Handle = enum(i32) {
     null = 0,
     global = 1,
     empty_string = 2,
+    _export_reverse_handles = 3,
     _,
 
     pub fn isNull(handle: Handle) bool {
@@ -145,6 +146,30 @@ pub const Handle = enum(i32) {
     }
 };
 
+pub fn exportFn(comptime name: []const u8, comptime f: anytype) fn () Handle {
+    comptime var export_name: []const u8 = "zjb_fn_";
+    const type_info = @typeInfo(@TypeOf(f)).Fn;
+    inline for (type_info.params) |param| {
+        export_name = export_name ++ comptime shortTypeName(param.type orelse @compileError("zjb exported functions need specified types."));
+    }
+    export_name = export_name ++ "_" ++ comptime shortTypeName(type_info.return_type orelse null) ++ "_" ++ name;
+
+    @export(f, .{ .name = export_name });
+
+    const S = struct {
+        var handle: ?Handle = null;
+        fn getHandle() Handle {
+            if (handle) |h| {
+                return h;
+            }
+            const r: Handle = @enumFromInt(Handle._export_reverse_handles.get(name, i32));
+            handle = r;
+            return r;
+        }
+    };
+    return S.getHandle;
+}
+
 fn shortTypeName(comptime T: type) []const u8 {
     return switch (T) {
         Handle => "o",
@@ -156,7 +181,7 @@ fn shortTypeName(comptime T: type) []const u8 {
         // in javascript so there's no reason not to do it.
         i32, i64, f32, f64, comptime_int, comptime_float => "n",
         else => {
-            @compileError("unexpected type" ++ @typeName(T));
+            @compileError("unexpected type " ++ @typeName(T) ++ ".  Supported types: zjb.Handle, bool, i32, i64, f32, f64, comptime_int, copmtime_float, void (as return type).");
         },
     };
 }

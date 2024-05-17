@@ -1,6 +1,10 @@
 const std = @import("std");
 const zjb = @import("zjb");
 
+export fn foobar(i: i32) void {
+    _ = i;
+}
+
 export fn main() void {
     const console = zjb.Handle.global.get("console", zjb.Handle);
     defer console.release();
@@ -74,10 +78,10 @@ export fn main() void {
         console.call("log", .{obj}, void);
     }
 
-    {
-        const document = zjb.Handle.global.get("document", zjb.Handle);
-        defer document.release();
+    const document = zjb.Handle.global.get("document", zjb.Handle);
+    defer document.release();
 
+    {
         const id = zjb.string("canvas");
         defer id.release();
 
@@ -123,4 +127,48 @@ export fn main() void {
             context.call("fill", .{}, void);
         }
     }
+
+    {
+        const str = zjb.string("keydown");
+        defer str.release();
+
+        console.call("log", .{keydownCallbackHandle()}, void);
+        document.call("addEventListener", .{ str, keydownCallbackHandle() }, void);
+    }
+
+    zjb.Handle.global.call("setTimeout", .{ zjb.exportFn("timeout", timeout)(), 500 }, void);
+}
+
+fn timeout() callconv(.C) void {
+    const console = zjb.Handle.global.get("console", zjb.Handle);
+    defer console.release();
+
+    const str = zjb.string("Hello from timeout callback");
+    defer str.release();
+
+    console.call("log", .{str}, void);
+}
+
+fn keydownCallback(event: zjb.Handle) callconv(.C) void {
+    defer event.release();
+
+    const console = zjb.Handle.global.get("console", zjb.Handle);
+    defer console.release();
+
+    const str = zjb.string("Hello from keydown callback");
+    defer str.release();
+
+    console.call("log", .{ str, event }, void);
+}
+
+var value: i32 = 0;
+fn incrementAndGet(increment: i32) callconv(.C) i32 {
+    value += increment;
+    return value;
+}
+
+const keydownCallbackHandle = zjb.exportFn("keydownCallback", keydownCallback);
+
+comptime {
+    _ = zjb.exportFn("incrementAndGet", incrementAndGet);
 }
