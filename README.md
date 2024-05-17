@@ -6,7 +6,7 @@ This library creates bindings for accessing Javascript from within a WASM runtim
 const zjb = @import("zjb");
 
 export fn main() void {
-    const console = zjb.global().get("console", zjb.Handle);
+    const console = zjb.Handle.global.get("console", zjb.Handle);
     defer console.release();
 
     const str = zjb.string("Hello from Zig");
