@@ -3,7 +3,7 @@ const env = {
 	__stack_pointer: 0,
 };
 
-const zjb = new Zjb();
+var zjb = new Zjb();
 
 (function() {
 	WebAssembly.instantiateStreaming(fetch("example.wasm"), {env: env, zjb: zjb.imports}).then(function (results) {

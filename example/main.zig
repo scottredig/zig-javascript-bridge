@@ -1,43 +1,61 @@
 const std = @import("std");
 const zjb = @import("zjb");
+const alloc = std.heap.wasm_allocator;
+
+fn log(v: anytype) void {
+    zjb.global("console").call("log", .{v}, void);
+}
+fn logStr(str: []const u8) void {
+    const handle = zjb.string(str);
+    defer handle.release();
+    zjb.global("console").call("log", .{handle}, void);
+}
 
 export fn main() void {
-    const console = zjb.Handle.global.get("console", zjb.Handle);
-    defer console.release();
+    zjb.global("console").call("log", .{zjb.constString("Hello from Zig")}, void);
 
     {
-        const str = zjb.string("Hello from Zig");
+        const formatted = std.fmt.allocPrint(alloc, "Runtime string: current timestamp {d}", .{zjb.global("Date").call("now", .{}, f32)}) catch @panic("print err");
+
+        const str = zjb.string(formatted);
         defer str.release();
 
-        console.call("log", .{str}, void);
+        zjb.global("console").call("log", .{str}, void);
     }
 
+    logStr("\n============================= Array View Example =============================");
     {
         var arr = [_]u16{ 1, 2, 3 };
         const obj = zjb.u16ArrayView(&arr);
         defer obj.release();
 
-        console.call("log", .{obj}, void);
-        console.call("log", .{obj.get("length", f64)}, void); // 3
+        logStr("View of Zig u16 array from Javascript, with its length");
+        log(obj);
+        log(obj.get("length", f64)); // 3
 
-        // Update is visible in Javascript
         arr[0] = 4;
-        console.call("log", .{obj}, void);
-        console.call("log", .{obj.get("length", f64)}, void); // 3
+        logStr("Changes from Zig are visible in Javascript");
+        log(obj);
 
-        // Unless wasm's memory grows, which causes the ArrayView to be invalidated.
+        logStr("Unless wasm's memory grows, which causes the ArrayView to be invalidated.");
         _ = @wasmMemoryGrow(0, 1);
         arr[0] = 5;
-        console.call("log", .{obj}, void);
-        console.call("log", .{obj.get("length", f64)}, void); // 0
+        log(obj);
+        log(obj.get("length", f64)); // 0
     }
 
+    logStr("\n============================= Data View Examples =============================");
+    logStr("dataView allows extraction of numbers from WASM's memory.");
     {
         const arr = [_]u16{ 1, 2, 3 };
         const obj = zjb.dataView(&arr);
         defer obj.release();
 
-        console.call("log", .{obj}, void);
+        logStr("dataView works for arrays.");
+        log(obj);
+        log(obj.call("getUint16", .{ @sizeOf(u16) * 0, true }, f32));
+        log(obj.call("getUint16", .{ @sizeOf(u16) * 1, true }, f32));
+        log(obj.call("getUint16", .{ @sizeOf(u16) * 2, true }, f32));
     }
 
     {
@@ -50,14 +68,16 @@ export fn main() void {
         const obj = zjb.dataView(&s);
         defer obj.release();
 
-        console.call("log", .{obj}, void);
+        logStr("dataView also works for structs, make sure they're extern!");
+        log(obj);
+        log(obj.call("getUint16", .{ @offsetOf(S, "a"), true }, f32));
+        log(obj.call("getUint16", .{ @offsetOf(S, "b"), true }, f32));
+        log(obj.call("getUint32", .{ @offsetOf(S, "c"), true }, f32));
     }
 
+    logStr("\n============================= Maps and index getting/setting =============================");
     {
-        const map = zjb.Handle.global.get("Map", zjb.Handle);
-        defer map.release();
-
-        const obj = map.new(.{});
+        const obj = zjb.global("Map").new(.{});
         defer obj.release();
 
         const myI32: i32 = 0;
@@ -71,32 +91,21 @@ export fn main() void {
         defer str.release();
         obj.indexSet(str, 2);
 
-        console.call("log", .{obj}, void);
+        log(obj);
     }
 
+    logStr("\n============================= html canvas example =============================");
     {
-        const document = zjb.Handle.global.get("document", zjb.Handle);
-        defer document.release();
-
-        const id = zjb.string("canvas");
-        defer id.release();
-
-        const canvas = document.call("getElementById", .{id}, zjb.Handle);
+        const canvas = zjb.global("document").call("getElementById", .{zjb.constString("canvas")}, zjb.Handle);
         defer canvas.release();
 
         canvas.set("width", 153);
         canvas.set("height", 140);
 
-        const str2D = zjb.string("2d");
-        defer str2D.release();
-
-        const context = canvas.call("getContext", .{str2D}, zjb.Handle);
+        const context = canvas.call("getContext", .{zjb.constString("2d")}, zjb.Handle);
         defer context.release();
 
-        const style = zjb.string("#F7A41D");
-        defer style.release();
-
-        context.set("fillStyle", style);
+        context.set("fillStyle", zjb.constString("#F7A41D"));
 
         // Zig logo by Zig Software Foundation, github.com/ziglang/logo
         const shapes = [_][]const f64{
@@ -122,5 +131,15 @@ export fn main() void {
             }
             context.call("fill", .{}, void);
         }
+    }
+
+    logStr("\n============================= Handle vs ConstHandle =============================");
+    {
+        logStr("zjb.global and zjb.constString add their ConstHandle on first use, and rember for subsiquent uses.  They can't be released.");
+        logStr("While zjb.string and Handle return values must be released after being used or they'll leak.");
+        logStr("See that some string remain in handles, while others have been removed after use.");
+        const handles = zjb.global("zjb").get("_handles", zjb.Handle);
+        defer handles.release();
+        log(handles);
     }
 }

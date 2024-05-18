@@ -3,16 +3,11 @@
 This library creates bindings for accessing Javascript from within a WASM runtime.  For example:
 
 ```zig
+// Example for readme
 const zjb = @import("zjb");
 
 export fn main() void {
-    const console = zjb.Handle.global.get("console", zjb.Handle);
-    defer console.release();
-
-    const str = zjb.string("Hello from Zig");
-    defer str.release();
-
-    console.call("log", .{str}, void);
+    zjb.global("console").call("log", .{zjb.constString("Hello from Zig")}, void);
 }
 
 ```
@@ -109,9 +104,6 @@ const Zjb = class {
       },
       "get_o_console": (id) => {
         return this.new_handle(this._handles.get(id).console);
-      },
-      "release": (id) => {
-        this._handles.delete(id);
       },
       "string": (ptr, len) => {
         return this.new_handle(this._decoder.decode(new Uint8Array(this.instance.exports.memory.buffer, ptr, len)));

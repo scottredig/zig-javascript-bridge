@@ -7,6 +7,32 @@ pub fn string(b: []const u8) Handle {
     return zjb.string(b.ptr, b.len);
 }
 
+pub fn constString(comptime b: []const u8) ConstHandle {
+    return struct {
+        var handle: ?ConstHandle = null;
+        fn get() ConstHandle {
+            if (handle) |h| {
+                return h;
+            }
+            handle = @enumFromInt(@intFromEnum(string(b)));
+            return handle.?;
+        }
+    }.get();
+}
+
+pub fn global(comptime b: []const u8) ConstHandle {
+    return struct {
+        var handle: ?ConstHandle = null;
+        fn get() ConstHandle {
+            if (handle) |h| {
+                return h;
+            }
+            handle = @enumFromInt(@intFromEnum(ConstHandle.global.get(b, Handle)));
+            return handle.?;
+        }
+    }.get();
+}
+
 pub fn i8ArrayView(data: []const i8) Handle {
     return zjb.i8ArrayView(data.ptr, data.len);
 }
@@ -58,10 +84,44 @@ pub fn dataView(data: anytype) Handle {
     }
 }
 
-pub const Handle = enum(i32) {
+pub const ConstHandle = enum(i32) {
     null = 0,
     global = 1,
     empty_string = 2,
+    _,
+
+    pub fn isNull(handle: ConstHandle) bool {
+        return handle == .null;
+    }
+
+    fn asHandle(handle: ConstHandle) Handle {
+        // Generally not a safe conversion, as turning into a handle and releasing elsewhere
+        // will invalidate all other uses of the constant.
+        return @enumFromInt(@intFromEnum(handle));
+    }
+
+    pub fn get(handle: ConstHandle, comptime field: []const u8, comptime RetType: type) RetType {
+        return handle.asHandle().get(field, RetType);
+    }
+    pub fn set(handle: ConstHandle, comptime field: []const u8, value: anytype) void {
+        handle.asHandle().set(field, value);
+    }
+    pub fn indexGet(handle: ConstHandle, arg: anytype, comptime RetType: type) RetType {
+        return handle.asHandle().indexGet(arg, RetType);
+    }
+    pub fn indexSet(handle: ConstHandle, arg: anytype, value: anytype) void {
+        handle.asHandle().indexSet(arg, value);
+    }
+    pub fn call(handle: ConstHandle, comptime method: []const u8, args: anytype, comptime RetType: type) RetType {
+        return handle.asHandle().call(method, args, RetType);
+    }
+    pub fn new(handle: ConstHandle, args: anytype) Handle {
+        return handle.asHandle().new(args);
+    }
+};
+
+pub const Handle = enum(i32) {
+    null = 0,
     _,
 
     pub fn isNull(handle: Handle) bool {
@@ -147,7 +207,7 @@ pub const Handle = enum(i32) {
 
 fn shortTypeName(comptime T: type) []const u8 {
     return switch (T) {
-        Handle => "o",
+        Handle, ConstHandle => "o",
         void => "v",
         bool => "b",
         // The number types map to the same name, even though
