@@ -135,11 +135,30 @@ export fn main() void {
 
     logStr("\n============================= Handle vs ConstHandle =============================");
     {
-        logStr("zjb.global and zjb.constString add their ConstHandle on first use, and rember for subsiquent uses.  They can't be released.");
+        logStr("zjb.global and zjb.constString add their ConstHandle on first use, and remember for subsiquent uses.  They can't be released.");
         logStr("While zjb.string and Handle return values must be released after being used or they'll leak.");
         logStr("See that some string remain in handles, while others have been removed after use.");
         const handles = zjb.global("zjb").get("_handles", zjb.Handle);
         defer handles.release();
         log(handles);
     }
+
+    logStr("\n============================= Exporting functions (press a key for a callback) =============================");
+    zjb.global("document").call("addEventListener", .{ zjb.constString("keydown"), zjb.fnHandle("keydownCallback", keydownCallback) }, void);
+}
+
+fn keydownCallback(event: zjb.Handle) callconv(.C) void {
+    defer event.release();
+
+    zjb.global("console").call("log", .{ zjb.constString("From keydown callback, event:"), event }, void);
+}
+
+var value: i32 = 0;
+fn incrementAndGet(increment: i32) callconv(.C) i32 {
+    value += increment;
+    return value;
+}
+
+comptime {
+    zjb.exportFn("incrementAndGet", incrementAndGet);
 }

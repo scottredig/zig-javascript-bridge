@@ -33,6 +33,32 @@ pub fn global(comptime b: []const u8) ConstHandle {
     }.get();
 }
 
+pub fn fnHandle(comptime name: []const u8, comptime f: anytype) ConstHandle {
+    comptime exportFn(name, f);
+
+    return struct {
+        var handle: ?ConstHandle = null;
+        fn get() ConstHandle {
+            if (handle) |h| {
+                return h;
+            }
+            handle = @enumFromInt(@intFromEnum(ConstHandle.exports.get(name, Handle)));
+            return handle.?;
+        }
+    }.get();
+}
+
+pub fn exportFn(comptime name: []const u8, comptime f: anytype) void {
+    comptime var export_name: []const u8 = "zjb_fn_";
+    const type_info = @typeInfo(@TypeOf(f)).Fn;
+    inline for (type_info.params) |param| {
+        export_name = export_name ++ comptime shortTypeName(param.type orelse @compileError("zjb exported functions need specified types."));
+    }
+    export_name = export_name ++ "_" ++ comptime shortTypeName(type_info.return_type orelse null) ++ "_" ++ name;
+
+    @export(f, .{ .name = export_name });
+}
+
 pub fn i8ArrayView(data: []const i8) Handle {
     return zjb.i8ArrayView(data.ptr, data.len);
 }
@@ -88,6 +114,7 @@ pub const ConstHandle = enum(i32) {
     null = 0,
     global = 1,
     empty_string = 2,
+    exports = 3,
     _,
 
     pub fn isNull(handle: ConstHandle) bool {
@@ -216,7 +243,7 @@ fn shortTypeName(comptime T: type) []const u8 {
         // in javascript so there's no reason not to do it.
         i32, i64, f32, f64, comptime_int, comptime_float => "n",
         else => {
-            @compileError("unexpected type" ++ @typeName(T));
+            @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types: zjb.Handle, bool, i32, i64, f32, f64, comptime_int, copmtime_float, void (as return type).");
         },
     };
 }
