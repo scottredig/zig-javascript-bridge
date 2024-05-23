@@ -3,7 +3,6 @@
 This library creates bindings for accessing Javascript from within a WASM runtime.  For example:
 
 ```zig
-// Example for readme
 const zjb = @import("zjb");
 
 export fn main() void {
@@ -32,7 +31,7 @@ This package is clearly inspired by Go's solution to this problem: https://pkg.g
 
 ## Usage
 
-As of March 2024, zjb requires Zig's master version, not 0.11.
+As of May 2024, zjb requires Zig 0.12.0 or greater.
 
 Call into Javascript using `zjb`, generate the Javascript side code, and then build an html page to combine them.
 
@@ -40,7 +39,7 @@ An end to end example is in the example folder.  It includes:
 
 - `main.zig` has usage examples for the `zjb` Zig import.
 - `build.zig`'s example for how to set up your build file.
-- `example/static` includes an HTML and a Javascript to run the example.
+- `example/static` includes HTML and Javascript files to run the example.
 
 To view the example in action, run `zig build example`.  Then host a webserver from `zig-out/bin`.
 
@@ -49,11 +48,19 @@ Zjb functions which return a value from Javascript require specifying which type
 - `i32`, `i64`, `f32`, `f64`.  These are the only numerical types that are supported by the WASM runtime export function signature, so you must cast to one of these before passing.
 - `comptime_int`, `comptime_float`.  These are valid as arguments, and are passed as f64 to Javascript, which is Javascript's main number type.
 - `zjb.Handle`.  The Zig side type for referring to Javascript values.  Most of the time this will be a Javascript object of some kind, but in some rare cases it might be something else, such as null, a Number, NaN, or undefined.  Used as an argument, it is automatically converted into the value that is held in zjb's Javascript `_handles` map.  When used as a return value, it is automatically added to zjb's Javascript `_handles` map.  It is the caller's responsibility to call `release` to remove it from the `_handles` map when you're done using it.
+- `zjb.ConstHandle` as arguments but not return types.  These values are returned by `zjb.constString`, `zjb.global`, and `zjb.fnHandle`.  `zjb.ConstHandle` works similarly to `zjb.Handle`, with a few notable exceptions: 1. Values are memoized upon first use on the Zig side, so they can be used any number of times without churning garbage.  2. There is no `release` function.  These values are intended to be around for the lifetime of your program, with reduced friction of using them.  As the functions which produce ConstHandle values all take only comptime arguments, these cannot balloon uncontrolably at runtime.  Some values are always defined as handles, `zjb.ConstHandle.null` is Javascript's `null`, `zjb.ConstHandle.global` is the global scope, and `zjb.ConstHandle.empty_string` is a Javascript empty string.
 - `void` is a valid type for method calls which have no return value.
+
+Zjb supports multiple ways to expose Zig functions to Javascript:
+- `zjb.exportFn` exposes the function with the passed name to Javascript.  This supports `zjb.Handle`, so if you pass an object from a Javascript function, a handle will automaticlaly be created and passed into Zig.  It is the responsibility of the Zig function being called to call `release` on any handles in its arguments at the appropriate time to avoid memory leaks.
+- `zjb.fnHandle` uses `zjb.exportFn` and additionally returns a `zjb.ConstHandle` to that function.  This can be used as a callback argument in Javascript functions.
+- Zig's `export` keyword on functions works as it always does in WASM, but doesn't support `zjb.Handle` correctly.
 
 A few extra notes:
 
 `zjb.string([]const u8)` decodes the slice of memory as a utf-8 string, returning a Handle.  The string will NOT update to reflect changes in the slice in Zig.
+
+`zjb.global` will be set to the value of that global variable the first time it is called.  As it is intended to be used for Javascript objects or classes defined in the global scope, that usage will be safe.  For example, `console`, `document` or `Map`.  If you use it to retrieve a value or object you've defined in Javascript, ensure it's defined before your program runs and doesn't change.
 
 The \_ArrayView functions (`i8ArrayView`, `u8ArrayView`, etc) create the respective JavaScript typed array backed by the same memory as the Zig WASM instance.
 
@@ -93,11 +100,6 @@ const Zjb = class {
   }
   constructor() {
     this._decoder = new TextDecoder();
-    this._handles = new Map();
-    this._handles.set(0, null);
-    this._handles.set(1, window);
-    this._handles.set(2, "");
-    this._next_handle = 3;
     this.imports = {
       "call_o_v_log": (arg0, id) => {
         this._handles.get(id).log(this._handles.get(arg0));
@@ -109,16 +111,24 @@ const Zjb = class {
         return this.new_handle(this._decoder.decode(new Uint8Array(this.instance.exports.memory.buffer, ptr, len)));
       },
     };
+    this.exports = {
+    };
+    this._export_reverse_handles = {};
+    this._handles = new Map();
+    this._handles.set(0, null);
+    this._handles.set(1, window);
+    this._handles.set(2, "");
+    this._handles.set(3, this.exports);
+    this._next_handle = 4;
   }
 };
 
 ```
 
-## Todo/Wishlist
+## Feature Wishlist
 
-Things that this doesn't have yet, but would be nice:
+Zjb fully works, but has not had enough usage to confidently tag a 1.0.  Here are some things which would be nice to add:
 
-- Exposing a function that has Handles in arguments, automatically handling everything.  Ability to pass in one of those functions as a callback into calls from Zig side.  Eg, being able to do setTimeout, or handle async networking tasks entirely from Zig.
 - Tests (need to run from a js environment somehow).
 - Better error handling.  (Both handling javascript exceptions as returned errors, but also properly printing panic's error messages).
 - Other random javascript stuff like instanceof, or converting a handle to a number  (typically not needed, but might be if you don't know what type something is until after you've got the handle).

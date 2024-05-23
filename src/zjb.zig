@@ -51,7 +51,9 @@ pub fn fnHandle(comptime name: []const u8, comptime f: anytype) ConstHandle {
 pub fn exportFn(comptime name: []const u8, comptime f: anytype) void {
     comptime var export_name: []const u8 = "zjb_fn_";
     const type_info = @typeInfo(@TypeOf(f)).Fn;
+    validateToJavascriptReturnType(type_info.return_type orelse void);
     inline for (type_info.params) |param| {
+        validateFromJavascriptArgumentType(param.type orelse void);
         export_name = export_name ++ comptime shortTypeName(param.type orelse @compileError("zjb exported functions need specified types."));
     }
     export_name = export_name ++ "_" ++ comptime shortTypeName(type_info.return_type orelse null) ++ "_" ++ name;
@@ -162,7 +164,7 @@ pub const Handle = enum(i32) {
     }
 
     pub fn get(handle: Handle, comptime field: []const u8, comptime RetType: type) RetType {
-        // validateReturn(RetType);
+        validateFromJavascriptReturnType(RetType);
         const name = comptime "get_" ++ shortTypeName(RetType) ++ "_" ++ field;
         const F = fn (Handle) callconv(.C) mapType(RetType);
         const f = @extern(*const F, .{ .library_name = "zjb", .name = name });
@@ -170,6 +172,7 @@ pub const Handle = enum(i32) {
     }
 
     pub fn set(handle: Handle, comptime field: []const u8, value: anytype) void {
+        validateToJavascriptArgumentType(@TypeOf(value));
         const name = comptime "set_" ++ shortTypeName(@TypeOf(value)) ++ "_" ++ field;
         const F = fn (mapType(@TypeOf(value)), Handle) callconv(.C) void;
         const f = @extern(*const F, .{ .library_name = "zjb", .name = name });
@@ -177,6 +180,8 @@ pub const Handle = enum(i32) {
     }
 
     pub fn indexGet(handle: Handle, arg: anytype, comptime RetType: type) RetType {
+        validateToJavascriptArgumentType(@TypeOf(arg));
+        validateFromJavascriptReturnType(RetType);
         const name = comptime "indexGet_" ++ shortTypeName(@TypeOf(arg)) ++ "_" ++ shortTypeName(RetType);
         const F = fn (mapType(@TypeOf(arg)), Handle) callconv(.C) mapType(RetType);
         const f = @extern(*const F, .{ .library_name = "zjb", .name = name });
@@ -184,6 +189,8 @@ pub const Handle = enum(i32) {
     }
 
     pub fn indexSet(handle: Handle, arg: anytype, value: anytype) void {
+        validateToJavascriptArgumentType(@TypeOf(arg));
+        validateToJavascriptArgumentType(@TypeOf(value));
         const name = comptime "indexSet_" ++ shortTypeName(@TypeOf(arg)) ++ shortTypeName(@TypeOf(value));
         const F = fn (mapType(@TypeOf(arg)), mapType(@TypeOf(value)), Handle) callconv(.C) void;
         const f = @extern(*const F, .{ .library_name = "zjb", .name = name });
@@ -199,6 +206,7 @@ pub const Handle = enum(i32) {
     }
 
     fn invoke(handle: Handle, args: anytype, comptime RetType: type, comptime prefix: []const u8, comptime suffix: []const u8) RetType {
+        validateFromJavascriptReturnType(RetType);
         const fields = comptime @typeInfo(@TypeOf(args)).Struct.fields;
         comptime var call_params: [fields.len + 1]std.builtin.Type.Fn.Param = undefined;
         comptime var extern_name: []const u8 = prefix;
@@ -210,6 +218,7 @@ pub const Handle = enum(i32) {
         };
 
         inline for (fields, 0..) |field, i| {
+            validateToJavascriptArgumentType(field.type);
             call_params[i] = .{
                 .is_generic = false,
                 .is_noalias = false,
@@ -232,6 +241,34 @@ pub const Handle = enum(i32) {
     }
 };
 
+fn validateToJavascriptArgumentType(comptime T: type) void {
+    switch (T) {
+        Handle, ConstHandle, bool, i32, i64, f32, f64, comptime_int, comptime_float => {},
+        else => @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types here: zjb.Handle, zjb.ConstHandle, bool, i32, i64, f32, f64, comptime_int, comptime_float."),
+    }
+}
+
+fn validateToJavascriptReturnType(comptime T: type) void {
+    switch (T) {
+        Handle, ConstHandle, bool, i32, i64, f32, f64, void => {},
+        else => @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types here: zjb.Handle, zjb.ConstHandle, bool, i32, i64, f32, f64, void."),
+    }
+}
+
+fn validateFromJavascriptReturnType(comptime T: type) void {
+    switch (T) {
+        Handle, bool, i32, i64, f32, f64, void => {},
+        else => @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types here: zjb.Handle, bool, i32, i64, f32, f64, void."),
+    }
+}
+
+fn validateFromJavascriptArgumentType(comptime T: type) void {
+    switch (T) {
+        Handle, bool, i32, i64, f32, f64 => {},
+        else => @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types here: zjb.Handle, bool, i32, i64, f32, f64."),
+    }
+}
+
 fn shortTypeName(comptime T: type) []const u8 {
     return switch (T) {
         Handle, ConstHandle => "o",
@@ -242,9 +279,7 @@ fn shortTypeName(comptime T: type) []const u8 {
         // handle this just fine, and produces fewer unique methods
         // in javascript so there's no reason not to do it.
         i32, i64, f32, f64, comptime_int, comptime_float => "n",
-        else => {
-            @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types: zjb.Handle, bool, i32, i64, f32, f64, comptime_int, copmtime_float, void (as return type).");
-        },
+        else => unreachable,
     };
 }
 
