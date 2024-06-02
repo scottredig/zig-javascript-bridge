@@ -513,6 +513,16 @@ const builtins = [_][]const u8{
     \\        return this.new_handle(new DataView(this.instance.exports.memory.buffer,ptr, len));
     \\      },
     ,
+    \\      "throw": (id) => {
+    \\        throw this._handles.get(id);
+    \\      },
+    ,
+    \\      "throwAndRelease": (id) => {
+    \\        var message = this._handles.get(id);
+    \\        this._handles.delete(id);
+    \\        throw message;
+    \\      },
+    ,
 
     \\      "i8ArrayView": (ptr, len) => {
     \\        return this.new_handle(new Int8Array(this.instance.exports.memory.buffer, ptr, len));

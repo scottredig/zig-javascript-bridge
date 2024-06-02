@@ -11,11 +11,13 @@ fn logStr(str: []const u8) void {
     zjb.global("console").call("log", .{handle}, void);
 }
 
+pub const panic = zjb.panic;
 export fn main() void {
     zjb.global("console").call("log", .{zjb.constString("Hello from Zig")}, void);
 
     {
-        const formatted = std.fmt.allocPrint(alloc, "Runtime string: current timestamp {d}", .{zjb.global("Date").call("now", .{}, f32)}) catch @panic("print err");
+        const formatted = std.fmt.allocPrint(alloc, "Runtime string: current timestamp {d}", .{zjb.global("Date").call("now", .{}, f32)}) catch |e| zjb.throwError(e);
+        defer alloc.free(formatted);
 
         const str = zjb.string(formatted);
         defer str.release();

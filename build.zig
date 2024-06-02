@@ -15,6 +15,7 @@ pub fn build(b: *std.Build) void {
         // initial build.
         .optimize = .ReleaseSafe,
     });
+    b.installArtifact(generate_js);
 
     /////////////////////////////////////////////////////////////
     // module

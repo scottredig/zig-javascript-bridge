@@ -61,6 +61,23 @@ pub fn exportFn(comptime name: []const u8, comptime f: anytype) void {
     @export(f, .{ .name = export_name });
 }
 
+pub fn panic(msg: []const u8, stacktrace: ?*std.builtin.StackTrace, ret_addr: ?usize) noreturn {
+    _ = stacktrace;
+    _ = ret_addr;
+
+    const handle = string(msg);
+    global("console").call("error", .{ constString("Zjb panic handler called with message: "), handle }, void);
+    throwAndRelease(handle);
+}
+
+pub fn throwError(err: anyerror) noreturn {
+    const handle = string(@errorName(err));
+    throwAndRelease(handle);
+}
+
+pub extern "zjb" fn throw(handle: Handle) noreturn;
+pub extern "zjb" fn throwAndRelease(handle: Handle) noreturn;
+
 pub fn i8ArrayView(data: []const i8) Handle {
     return zjb.i8ArrayView(data.ptr, data.len);
 }
@@ -294,6 +311,7 @@ const zjb = struct {
     extern "zjb" fn release(id: Handle) void;
     extern "zjb" fn string(ptr: [*]const u8, len: u32) Handle;
     extern "zjb" fn dataview(ptr: *const anyopaque, size: u32) Handle;
+    extern "zjb" fn throwAndRelease(id: Handle) void;
 
     extern "zjb" fn i8ArrayView(ptr: *const anyopaque, size: u32) Handle;
     extern "zjb" fn u8ArrayView(ptr: *const anyopaque, size: u32) Handle;
