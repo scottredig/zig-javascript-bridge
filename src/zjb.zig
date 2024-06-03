@@ -158,6 +158,9 @@ pub const ConstHandle = enum(i32) {
     pub fn indexSet(handle: ConstHandle, arg: anytype, value: anytype) void {
         handle.asHandle().indexSet(arg, value);
     }
+    pub fn eql(handle: Handle, other: anytype) bool {
+        handle.asHandle().equal(other);
+    }
     pub fn call(handle: ConstHandle, comptime method: []const u8, args: anytype, comptime RetType: type) RetType {
         return handle.asHandle().call(method, args, RetType);
     }
@@ -212,6 +215,14 @@ pub const Handle = enum(i32) {
         const F = fn (mapType(@TypeOf(arg)), mapType(@TypeOf(value)), Handle) callconv(.C) void;
         const f = @extern(*const F, .{ .library_name = "zjb", .name = name });
         @call(.auto, f, .{ arg, value, handle });
+    }
+
+    pub fn eql(handle: Handle, other: anytype) bool {
+        switch (@TypeOf(other)) {
+            Handle => return zjb.equal(handle, other),
+            ConstHandle => return zjb.equal(handle, other.asHandle()),
+            else => @compileError("eql only compares against Handle and ConstHandle, not " ++ @typeName(@TypeOf(other))),
+        }
     }
 
     pub fn call(handle: Handle, comptime method: []const u8, args: anytype, comptime RetType: type) RetType {
@@ -312,6 +323,7 @@ const zjb = struct {
     extern "zjb" fn string(ptr: [*]const u8, len: u32) Handle;
     extern "zjb" fn dataview(ptr: *const anyopaque, size: u32) Handle;
     extern "zjb" fn throwAndRelease(id: Handle) void;
+    extern "zjb" fn equal(handle: Handle, other: Handle) bool;
 
     extern "zjb" fn i8ArrayView(ptr: *const anyopaque, size: u32) Handle;
     extern "zjb" fn u8ArrayView(ptr: *const anyopaque, size: u32) Handle;

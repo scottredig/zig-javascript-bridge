@@ -523,6 +523,10 @@ const builtins = [_][]const u8{
     \\        throw message;
     \\      },
     ,
+    \\      "equal": (a, b) => {
+    \\        return this._handles.get(a) === this._handles.get(b);
+    \\      },
+    ,
 
     \\      "i8ArrayView": (ptr, len) => {
     \\        return this.new_handle(new Int8Array(this.instance.exports.memory.buffer, ptr, len));
