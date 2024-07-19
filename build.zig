@@ -8,7 +8,7 @@ pub fn build(b: *std.Build) void {
     // generate js exe
     const generate_js = b.addExecutable(.{
         .name = "generate_js",
-        .root_source_file = .{ .path = "src/generate_js.zig" },
+        .root_source_file = b.path("src/generate_js.zig"),
         .target = b.host,
         // Reusing this will occur more often than compiling this, as
         // it usually can be cached.  So faster execution is worth slower
@@ -21,7 +21,7 @@ pub fn build(b: *std.Build) void {
     // module
 
     const module = b.addModule("zjb", .{
-        .root_source_file = .{ .path = "src/zjb.zig" },
+        .root_source_file = b.path("src/zjb.zig"),
     });
 
     /////////////////////////////////////////////////////////////
@@ -38,7 +38,7 @@ pub fn build(b: *std.Build) void {
     // example.wasm
     const example = b.addExecutable(.{
         .name = "example",
-        .root_source_file = .{ .path = "example/main.zig" },
+        .root_source_file = b.path("example/main.zig"),
         .target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .freestanding }),
         .optimize = optimize,
     });
@@ -65,7 +65,7 @@ pub fn build(b: *std.Build) void {
     example_step.dependOn(&b.addInstallFileWithDir(extract_example_out, dir, "zjb_extract.js").step);
 
     example_step.dependOn(&b.addInstallDirectory(.{
-        .source_dir = .{ .path = "example/static" },
+        .source_dir = b.path("example/static"),
         .install_dir = dir,
         .install_subdir = "",
     }).step);
@@ -77,7 +77,7 @@ pub fn build(b: *std.Build) void {
 
     const simple = b.addExecutable(.{
         .name = "simple",
-        .root_source_file = .{ .path = "simple/simple.zig" },
+        .root_source_file = b.path("simple/simple.zig"),
         .target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .freestanding }),
         .optimize = optimize,
     });
@@ -97,7 +97,7 @@ pub fn build(b: *std.Build) void {
     }).step);
     simple_step.dependOn(&b.addInstallFileWithDir(extract_simple_out, dir, "zjb_extract.js").step);
     simple_step.dependOn(&b.addInstallDirectory(.{
-        .source_dir = .{ .path = "simple/static" },
+        .source_dir = b.path("simple/static"),
         .install_dir = dir,
         .install_subdir = "",
     }).step);
