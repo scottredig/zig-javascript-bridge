@@ -88,6 +88,7 @@ pub fn main() !void {
 
     try writer.writeAll("const ");
     try writer.writeAll(args[2]);
+    // keep the "3" and "12" in sync with the size of DynamicString.Header
     try writer.writeAll(
         \\ = class {
         \\  new_handle(value) {
@@ -99,8 +100,24 @@ pub fn main() !void {
         \\    this._next_handle++;
         \\    return result;
         \\  }
+        \\  alloc_string(string) {
+        \\    const encodedString = this._encoder.encode(String(string));
+        \\    const pointer = this.instance.exports.alloc_string(encodedString.length + 12);
+        \\    const buffer = this.instance.exports.memory.buffer;
+        \\    let header = new Uint32Array(buffer, pointer, 3);
+        \\    header[0] = 0;
+        \\    header[1] = pointer;
+        \\    header[2] = encodedString.length + 12;
+        \\    const arr = new Uint8Array(buffer, pointer + 12, encodedString.length);
+        \\    arr.set(encodedString);
+        \\    return pointer;
+        \\  }
+        \\  free_string(pointer) {
+        \\    this.instance.exports.free_string(pointer)
+        \\  }
         \\  constructor() {
         \\    this._decoder = new TextDecoder();
+        \\    this._encoder = new TextEncoder();
         \\    this.imports = {
         \\
     );
@@ -218,6 +235,9 @@ pub fn main() !void {
             .number => {
                 try writer.writeAll("return ");
             },
+            .string => {
+                try writer.writeAll("return this.alloc_string(");
+            },
         }
 
         switch (method) {
@@ -260,7 +280,7 @@ pub fn main() !void {
         }
 
         switch (ret_type) {
-            .bool, .object => {
+            .bool, .object, .string => {
                 try writer.writeAll(")");
             },
             .void, .number => {},
@@ -304,17 +324,29 @@ pub fn main() !void {
             try writer.print("arg{d}", .{i});
         }
 
-        try writer.writeAll(") => {\n        ");
+        try writer.writeAll(") => {\n");
+
+        for (func_args.items, 0..) |arg, i| {
+            switch (arg) {
+                .string => {
+                    try writer.print("        let str{} = this.alloc_string(arg{});\n", .{ i, i });
+                },
+                else => {},
+            }
+        }
+
+        try writer.writeAll("        let r = ");
         switch (ret_type) {
             .void => {},
             .bool => {
-                try writer.writeAll("return Boolean(");
+                try writer.writeAll("Boolean(");
             },
             .object => {
-                try writer.writeAll("return this._handles.get(");
+                try writer.writeAll("this._handles.get(");
             },
-            .number => {
-                try writer.writeAll("return ");
+            .number => {},
+            .string => {
+                try writer.writeAll("this.alloc_string(");
             },
         }
 
@@ -339,6 +371,9 @@ pub fn main() !void {
                 .number => {
                     try writer.print("arg{d}", .{i});
                 },
+                .string => {
+                    try writer.print("str{d}", .{i});
+                },
             }
         }
 
@@ -348,9 +383,22 @@ pub fn main() !void {
             .bool, .object => {
                 try writer.writeAll(")");
             },
+            .string => unreachable,
             .void, .number => {},
         }
-        try writer.writeAll(";\n      },\n");
+        try writer.writeAll(";\n");
+
+        for (func_args.items, 0..) |arg, i| {
+            switch (arg) {
+                .string => {
+                    try writer.print("        this.free_string(str{});\n", .{i});
+                },
+                else => {},
+            }
+        }
+
+        try writer.writeAll("        return r;\n");
+        try writer.writeAll("      },\n");
     }
     try writer.writeAll("    };\n"); // end exports
 
@@ -397,6 +445,9 @@ fn writeArg(writer: anytype, arg: ArgType, i: usize) !void {
         },
         .number => {
             try writer.print("arg{d}", .{i});
+        },
+        .string => {
+            try writer.print("this.allocString(arg{d})", .{i});
         },
     }
 }
@@ -454,6 +505,7 @@ const ArgType = enum {
     bool,
     void,
     object,
+    string,
 };
 
 const NameParser = struct {
@@ -493,6 +545,9 @@ const NameParser = struct {
         }
         if (self.maybe("o")) {
             return .object;
+        }
+        if (self.maybe("s")) {
+            return .string;
         }
         return ExtractError.InvalidExportedName;
     }

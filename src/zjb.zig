@@ -188,7 +188,11 @@ pub const Handle = enum(i32) {
         const name = comptime "get_" ++ shortTypeName(RetType) ++ "_" ++ field;
         const F = fn (Handle) callconv(.C) mapType(RetType);
         const f = @extern(*const F, .{ .library_name = "zjb", .name = name });
-        return @call(.auto, f, .{handle});
+        const result = @call(.auto, f, .{handle});
+        if (RetType == DynamicString) {
+            return @bitCast(result);
+        }
+        return result;
     }
 
     pub fn set(handle: Handle, comptime field: []const u8, value: anytype) void {
@@ -269,6 +273,39 @@ pub const Handle = enum(i32) {
     }
 };
 
+pub const DynamicString = extern struct {
+    ptr: *Header,
+
+    const Header = struct {
+        handle: Handle,
+        ptr: [*]u8,
+        len: u32,
+    };
+
+    pub fn slice(self: DynamicString) []u8 {
+        return self.raw_slice()[@sizeOf(Header)..];
+    }
+
+    pub fn raw_slice(self: DynamicString) []u8 {
+        return @as([*]u8, @ptrCast(self.ptr))[0..self.ptr.len];
+    }
+
+    pub fn deinit(self: DynamicString) void {
+        std.heap.wasm_allocator.free(self.raw_slice());
+    }
+
+    export fn alloc_string(len: usize) usize {
+        return @intFromPtr((std.heap.wasm_allocator.alloc(u8, len) catch {
+            // throwError(err);
+            unreachable;
+        }).ptr);
+    }
+
+    export fn free_string(self: DynamicString) void {
+        self.deinit();
+    }
+};
+
 fn validateToJavascriptArgumentType(comptime T: type) void {
     switch (T) {
         Handle, ConstHandle, bool, i32, i64, f32, f64, comptime_int, comptime_float => {},
@@ -285,14 +322,14 @@ fn validateToJavascriptReturnType(comptime T: type) void {
 
 fn validateFromJavascriptReturnType(comptime T: type) void {
     switch (T) {
-        Handle, bool, i32, i64, f32, f64, void => {},
+        Handle, DynamicString, bool, i32, i64, f32, f64, void => {},
         else => @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types here: zjb.Handle, bool, i32, i64, f32, f64, void."),
     }
 }
 
 fn validateFromJavascriptArgumentType(comptime T: type) void {
     switch (T) {
-        Handle, bool, i32, i64, f32, f64 => {},
+        Handle, DynamicString, bool, i32, i64, f32, f64 => {},
         else => @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types here: zjb.Handle, bool, i32, i64, f32, f64."),
     }
 }
@@ -300,6 +337,7 @@ fn validateFromJavascriptArgumentType(comptime T: type) void {
 fn shortTypeName(comptime T: type) []const u8 {
     return switch (T) {
         Handle, ConstHandle => "o",
+        DynamicString => "s",
         void => "v",
         bool => "b",
         // The number types map to the same name, even though
@@ -312,7 +350,7 @@ fn shortTypeName(comptime T: type) []const u8 {
 }
 
 fn mapType(comptime T: type) type {
-    if (T == comptime_int or T == comptime_float) {
+    if (T == comptime_int or T == comptime_float or T == DynamicString) {
         return f64;
     }
     return T;
