@@ -16,6 +16,10 @@ Is equivalent to this Javascript:
 console.log("Hello from Zig");
 ```
 
+## Projet Status
+
+ZJB is fully functional and is ready to be used in other projects.  However 1.0 will not be tagged until there is significant enough usage that confidence in the API not needing further changes is high.  There's currently no release schedule for point releases, so your `build.zig.zon` file should reference `https://github.com/scottredig/zig-javascript-bridge/archive/<HASH OF COMMIT MAIN IS ON>.zip`.
+
 ## Why
 
 Calling Javascript functions from Zig is a pain.  WASM has restrictions on the function API surface, and how references to the runtime environment (Javascript) can be stored.  So to access Javascript functionality from Zig, you must create: a function in Zig which is friendly to call, a function export, and a function in Javascript which translates into the call you actually want.
@@ -124,12 +128,3 @@ const Zjb = class {
 };
 
 ```
-
-## Feature Wishlist
-
-Zjb fully works, but has not had enough usage to confidently tag a 1.0.  Here are some things which would be nice to add:
-
-- Tests (need to run from a js environment somehow).
-- Better error handling.  (Both handling javascript exceptions as returned errors, but also properly printing panic's error messages).
-- Other random javascript stuff like instanceof, or converting a handle to a number  (typically not needed, but might be if you don't know what type something is until after you've got the handle).
-- It may be useful to add a method to copy strings from Javascript to Zig.
