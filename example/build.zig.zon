@@ -1,0 +1,15 @@
+.{
+    .name = "example",
+    .version = "0.0.0",
+    .dependencies = .{
+        .zjb = .{
+            .path = "../",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "static",
+    },
+}

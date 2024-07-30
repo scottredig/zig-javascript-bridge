@@ -18,7 +18,7 @@ console.log("Hello from Zig");
 
 ## Projet Status
 
-ZJB is fully functional and is ready to be used in other projects.  However 1.0 will not be tagged until there is significant enough usage that confidence in the API not needing further changes is high.  There's currently no release schedule for point releases, so your `build.zig.zon` file should reference `https://github.com/scottredig/zig-javascript-bridge/archive/<HASH OF COMMIT MAIN IS ON>.zip`.
+ZJB is fully functional and is ready to be used in other projects.  However 1.0 will not be tagged until there is significant enough usage that confidence in the API not needing further changes is high.
 
 ## Why
 
@@ -37,15 +37,21 @@ This package is clearly inspired by Go's solution to this problem: https://pkg.g
 
 As of May 2024, zjb requires Zig 0.12.0 or greater.
 
+The simple folder provides a good template to start from.  You'll need to update to reference to zjb in `build.zig.zon`.  There's currently no release schedule for point releases, so you should use the latest available code.  Eg, copy the entire `simple` folder into your empty project, then run `zig fetch --save=zjb https://github.com/scottredig/zig-javascript-bridge/archive/<put hash of latest commit to main here>.zip`
+
 Call into Javascript using `zjb`, generate the Javascript side code, and then build an html page to combine them.
 
-An end to end example is in the example folder.  It includes:
+### Example
 
-- `main.zig` has usage examples for the `zjb` Zig import.
+An example which demonstrates usage of all of the components of `zjb` is in the example folder.  It includes:
+
+- `src/main.zig` has usage examples for the `zjb` Zig import.
 - `build.zig`'s example for how to set up your build file.
-- `example/static` includes HTML and Javascript files to run the example.
+- `static` includes HTML and Javascript files to run the example.
 
-To view the example in action, run `zig build example`.  Then host a webserver from `zig-out/bin`.
+To view the example in action, run `zig build example` from inside the example folder.  Then host a webserver from `zig-out/bin`.
+
+### Details
 
 Zjb functions which return a value from Javascript require specifying which type is returned.  As arguments or return types to be passed into Javascript, zjb supports:
 

@@ -1,13 +1,11 @@
 .{
-    .name = "zig-javascript-bridge",
+    .name = "javascript-bridge",
     .version = "0.0.0",
     .paths = .{
-        "",
-        // For example...
-        //"build.zig",
-        //"build.zig.zon",
-        //"src",
-        //"LICENSE",
-        //"README.md",
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "LICENSE",
+        "README.md",
     },
 }
