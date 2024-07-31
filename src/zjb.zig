@@ -14,6 +14,7 @@ pub fn constString(comptime b: []const u8) ConstHandle {
             if (handle) |h| {
                 return h;
             }
+            ConstHandle.handle_count += 1;
             handle = @enumFromInt(@intFromEnum(string(b)));
             return handle.?;
         }
@@ -27,6 +28,7 @@ pub fn global(comptime b: []const u8) ConstHandle {
             if (handle) |h| {
                 return h;
             }
+            ConstHandle.handle_count += 1;
             handle = @enumFromInt(@intFromEnum(ConstHandle.global.get(b, Handle)));
             return handle.?;
         }
@@ -42,6 +44,7 @@ pub fn fnHandle(comptime name: []const u8, comptime f: anytype) ConstHandle {
             if (handle) |h| {
                 return h;
             }
+            ConstHandle.handle_count += 1;
             handle = @enumFromInt(@intFromEnum(ConstHandle.exports.get(name, Handle)));
             return handle.?;
         }
@@ -68,6 +71,10 @@ pub fn panic(msg: []const u8, stacktrace: ?*std.builtin.StackTrace, ret_addr: ?u
     const handle = string(msg);
     global("console").call("error", .{ constString("Zjb panic handler called with message: "), handle }, void);
     throwAndRelease(handle);
+}
+
+pub fn unreleasedHandleCount() u32 {
+    return zjb.handleCount() - ConstHandle.handle_count;
 }
 
 pub fn throwError(err: anyerror) noreturn {
@@ -135,6 +142,8 @@ pub const ConstHandle = enum(i32) {
     empty_string = 2,
     exports = 3,
     _,
+
+    var handle_count: u32 = 4;
 
     pub fn isNull(handle: ConstHandle) bool {
         return handle == .null;
@@ -324,6 +333,7 @@ const zjb = struct {
     extern "zjb" fn dataview(ptr: *const anyopaque, size: u32) Handle;
     extern "zjb" fn throwAndRelease(id: Handle) void;
     extern "zjb" fn equal(handle: Handle, other: Handle) bool;
+    extern "zjb" fn handleCount() u32;
 
     extern "zjb" fn i8ArrayView(ptr: *const anyopaque, size: u32) Handle;
     extern "zjb" fn u8ArrayView(ptr: *const anyopaque, size: u32) Handle;

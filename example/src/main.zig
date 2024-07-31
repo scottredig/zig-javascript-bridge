@@ -135,6 +135,9 @@ export fn main() void {
         }
     }
 
+    logStr("\n============================= Exporting functions (press a key for a callback) =============================");
+    zjb.global("document").call("addEventListener", .{ zjb.constString("keydown"), zjb.fnHandle("keydownCallback", keydownCallback) }, void);
+
     logStr("\n============================= Handle vs ConstHandle =============================");
     {
         logStr("zjb.global and zjb.constString add their ConstHandle on first use, and remember for subsiquent uses.  They can't be released.");
@@ -145,8 +148,9 @@ export fn main() void {
         log(handles);
     }
 
-    logStr("\n============================= Exporting functions (press a key for a callback) =============================");
-    zjb.global("document").call("addEventListener", .{ zjb.constString("keydown"), zjb.fnHandle("keydownCallback", keydownCallback) }, void);
+    logStr("\n============================= Testing for unreleased handles =============================");
+    logStr("\nIt's good to do this often.  Assert that the count is <= the number of handles you'll keep stored in long term state.");
+    std.debug.assert(zjb.unreleasedHandleCount() == 0);
 }
 
 fn keydownCallback(event: zjb.Handle) callconv(.C) void {
