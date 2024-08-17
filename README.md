@@ -16,7 +16,7 @@ Is equivalent to this Javascript:
 console.log("Hello from Zig");
 ```
 
-## Projet Status
+## Project Status
 
 ZJB is fully functional and is ready to be used in other projects.  However 1.0 will not be tagged until there is significant enough usage that confidence in the API not needing further changes is high.
 
