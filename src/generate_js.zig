@@ -362,24 +362,74 @@ pub fn main() !void {
 
     try writer.writeAll(
         \\    const self = this;
-        \\    function Viewer (global) {
-        \\      this.view = new DataView(self.instance.exports.memory.buffer);
-        \\      this.pointer = this.view.getInt32(global.value, true);
+        \\    class Viewer {
+        \\      constructor(global) {
+        \\        this.global = global;
+        \\        this._pointer = null;
+        \\      }
+        \\      getPointer(memory) {
+        \\        if (this._pointer === null) {
+        \\          this._pointer = memory.getInt32(self.instance.exports[this.global].value, true);
+        \\        }
+        \\        return this._pointer;
+        \\      }
+        \\      getInt32() {
+        \\        const memory = self.memory;
+        \\        return memory.getInt32(this.getPointer(memory), true);
+        \\      };
+        \\      setInt32(v) {
+        \\        const memory = self.memory;
+        \\        memory.setInt32(this.getPointer(memory), v, true);
+        \\      };
+        \\      getBigInt64() {
+        \\        const memory = self.memory;
+        \\        return memory.getBigInt64(this.getPointer(memory), true);
+        \\      };
+        \\      setBigInt64(v) {
+        \\        const memory = self.memory;
+        \\        memory.setBigInt64(this.getPointer(memory), v, true);
+        \\      };
+        \\      getUInt32() {
+        \\        const memory = self.memory;
+        \\        return memory.getUint32(this.getPointer(memory), true);
+        \\      };
+        \\      setUInt32(v) {
+        \\        const memory = self.memory;
+        \\        memory.setUint32(this.getPointer(memory), v, true);
+        \\      };
+        \\      getBigUInt64() {
+        \\        const memory = self.memory;
+        \\        return memory.getBigUint64(this.getPointer(memory), true);
+        \\      };
+        \\      setBigUInt64(v) {
+        \\        const memory = self.memory;
+        \\        memory.setBigUint64(this.getPointer(memory), v, true);
+        \\      };
+        \\      getFloat32() {
+        \\        const memory = self.memory;
+        \\        return memory.getFloat32(this.getPointer(memory), true);
+        \\      };
+        \\      setFloat32(v) {
+        \\        const memory = self.memory;
+        \\        memory.setFloat32(this.getPointer(memory), v, true);
+        \\      };
+        \\      getFloat64() {
+        \\        const memory = self.memory;
+        \\        return memory.getFloat64(this.getPointer(memory), true);
+        \\      };
+        \\      setFloat64(v) {
+        \\        const memory = self.memory;
+        \\        memory.setFloat64(this.getPointer(memory), v, true);
+        \\      };
+        \\      getUint8() {
+        \\        const memory = self.memory;
+        \\        return memory.getUint8(this.getPointer(memory));
+        \\      };
+        \\      setUint8(v) {
+        \\        const memory = self.memory;
+        \\        memory.setUint8(this.getPointer(memory), v);
+        \\      };
         \\    }
-        \\    Viewer.prototype.getInt32 = function () { return this.view.getInt32(this.pointer, true); };
-        \\    Viewer.prototype.setInt32 = function (v) { this.view.setInt32(this.pointer, v, true); };
-        \\    Viewer.prototype.getBigInt64 = function () { return this.view.getBigInt64(this.pointer, true); };
-        \\    Viewer.prototype.setBigInt64 = function (v) { this.view.setBigInt64(this.pointer, v, true); };
-        \\    Viewer.prototype.getUInt32 = function () { return this.view.getUint32(this.pointer, true); };
-        \\    Viewer.prototype.setUInt32 = function (v) { this.view.setUint32(this.pointer, v, true); };
-        \\    Viewer.prototype.getBigUInt64 = function () { return this.view.getBigUint64(this.pointer, true); };
-        \\    Viewer.prototype.setBigUInt64 = function (v) { this.view.setBigUint64(this.pointer, v, true); };
-        \\    Viewer.prototype.getFloat32 = function () { return this.view.getFloat32(this.pointer, true); };
-        \\    Viewer.prototype.setFloat32 = function (v) { this.view.setFloat32(this.pointer, v, true); };
-        \\    Viewer.prototype.getFloat64 = function () { return this.view.getFloat64(this.pointer, true); };
-        \\    Viewer.prototype.setFloat64 = function (v) { this.view.setFloat64(this.pointer, v, true); };
-        \\    Viewer.prototype.getUint8 = function () { return this.view.getUint8(this.pointer); };
-        \\    Viewer.prototype.setUint8 = function (v) { this.view.setUint8(this.pointer, v); };
         \\
     );
 
@@ -393,9 +443,9 @@ pub fn main() !void {
 
         const name = np.slice;
         try writer.writeAll("    {\n");
-        try writer.writeAll("      const view = () => new Viewer(this.instance.exports.");
+        try writer.writeAll("      const view = new Viewer(\"");
         try writer.writeAll(global);
-        try writer.writeAll(");\n");
+        try writer.writeAll("\");\n");
 
         try writer.writeAll("      Object.defineProperty(this.exports, \"");
         try writer.writeAll(name);
@@ -403,38 +453,38 @@ pub fn main() !void {
 
         switch (valueType) {
             .i32 => try writer.writeAll(
-                \\        get: () => view().getInt32(),
-                \\        set: v => view().setInt32(v),
+                \\        get: () => view.getInt32(),
+                \\        set: v => view.setInt32(v),
                 \\
             ),
             .i64 => try writer.writeAll(
-                \\        get: () => view().getBigInt64(),
-                \\        set: v => view().setBigInt64(v),
+                \\        get: () => view.getBigInt64(),
+                \\        set: v => view.setBigInt64(v),
                 \\
             ),
             .u32 => try writer.writeAll(
-                \\        get: () => view().getUInt32(),
-                \\        set: v => view().setUInt32(v),
+                \\        get: () => view.getUInt32(),
+                \\        set: v => view.setUInt32(v),
                 \\
             ),
             .u64 => try writer.writeAll(
-                \\        get: () => view().getBigUInt64(),
-                \\        set: v => view().setBigUInt64(v),
+                \\        get: () => view.getBigUInt64(),
+                \\        set: v => view.setBigUInt64(v),
                 \\
             ),
             .f32 => try writer.writeAll(
-                \\        get: () => view().getFloat32(),
-                \\        set: v => view().setFloat32(v),
+                \\        get: () => view.getFloat32(),
+                \\        set: v => view.setFloat32(v),
                 \\
             ),
             .f64 => try writer.writeAll(
-                \\        get: () => view().getFloat64(),
-                \\        set: v => view().setFloat64(v),
+                \\        get: () => view.getFloat64(),
+                \\        set: v => view.setFloat64(v),
                 \\
             ),
             .bool => try writer.writeAll(
-                \\        get: () => Boolean(view().getUint8()),
-                \\        set: v => view().setUint8(v ? 1 : 0),
+                \\        get: () => Boolean(view.getUint8()),
+                \\        set: v => view.setUint8(v ? 1 : 0),
                 \\
             ),
         }
@@ -450,6 +500,18 @@ pub fn main() !void {
     } // end export descriptors
 
     try writer.writeAll(
+        \\    this._data_view = null;
+        \\    Object.defineProperty(this, "memory", {
+        \\      get: () => {
+        \\        if (this._data_view === null
+        \\        ||  this._data_view.buffer.byteLength !== this.instance.exports.memory.buffer.byteLength) {
+        \\          this._data_view = new DataView(this.instance.exports.memory.buffer);
+        \\        }
+        \\        return this._data_view;
+        \\      },
+        \\      enumerable: true,
+        \\      configurable: false,
+        \\    });
         \\    this._export_reverse_handles = {};
         \\    this._handles = new Map();
         \\    this._handles.set(0, null);
@@ -640,7 +702,7 @@ const builtins = [_][]const u8{
     \\      },
     ,
     \\      "dataview": (ptr, len) => {
-    \\        return this.new_handle(new DataView(this.instance.exports.memory.buffer,ptr, len));
+    \\        return this.new_handle(new DataView(this.instance.exports.memory.buffer, ptr, len));
     \\      },
     ,
     \\      "throw": (id) => {
