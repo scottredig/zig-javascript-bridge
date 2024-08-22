@@ -104,6 +104,12 @@ pub fn main() !void {
         \\    this._next_handle++;
         \\    return result;
         \\  }
+        \\  dataView() {
+        \\    if (this._cached_data_view.buffer.byteLength !== this.instance.exports.memory.buffer.byteLength) {
+        \\      this._cached_data_view = new DataView(this.instance.exports.memory.buffer);
+        \\    }
+        \\    return this._cached_data_view;
+        \\  }
         \\  constructor() {
         \\    this._decoder = new TextDecoder();
         \\    this.imports = {
@@ -360,80 +366,27 @@ pub fn main() !void {
 
     try writer.writeAll("    };\n"); // end export object
 
-    if (exportGlobals.items.len > 0) {
-        try writer.writeAll(
-            \\    const self = this;
-            \\    class Viewer {
-            \\      constructor(global) {
-            \\        this.global = global;
-            \\        this._pointer = null;
-            \\      }
-            \\      getPointer(memory) {
-            \\        if (this._pointer === null) {
-            \\          this._pointer = memory.getInt32(self.instance.exports[this.global].value, true);
-            \\        }
-            \\        return this._pointer;
-            \\      }
-            \\      getInt32() {
-            \\        const memory = self.memory;
-            \\        return memory.getInt32(this.getPointer(memory), true);
-            \\      };
-            \\      setInt32(v) {
-            \\        const memory = self.memory;
-            \\        memory.setInt32(this.getPointer(memory), v, true);
-            \\      };
-            \\      getBigInt64() {
-            \\        const memory = self.memory;
-            \\        return memory.getBigInt64(this.getPointer(memory), true);
-            \\      };
-            \\      setBigInt64(v) {
-            \\        const memory = self.memory;
-            \\        memory.setBigInt64(this.getPointer(memory), v, true);
-            \\      };
-            \\      getUInt32() {
-            \\        const memory = self.memory;
-            \\        return memory.getUint32(this.getPointer(memory), true);
-            \\      };
-            \\      setUInt32(v) {
-            \\        const memory = self.memory;
-            \\        memory.setUint32(this.getPointer(memory), v, true);
-            \\      };
-            \\      getBigUInt64() {
-            \\        const memory = self.memory;
-            \\        return memory.getBigUint64(this.getPointer(memory), true);
-            \\      };
-            \\      setBigUInt64(v) {
-            \\        const memory = self.memory;
-            \\        memory.setBigUint64(this.getPointer(memory), v, true);
-            \\      };
-            \\      getFloat32() {
-            \\        const memory = self.memory;
-            \\        return memory.getFloat32(this.getPointer(memory), true);
-            \\      };
-            \\      setFloat32(v) {
-            \\        const memory = self.memory;
-            \\        memory.setFloat32(this.getPointer(memory), v, true);
-            \\      };
-            \\      getFloat64() {
-            \\        const memory = self.memory;
-            \\        return memory.getFloat64(this.getPointer(memory), true);
-            \\      };
-            \\      setFloat64(v) {
-            \\        const memory = self.memory;
-            \\        memory.setFloat64(this.getPointer(memory), v, true);
-            \\      };
-            \\      getUint8() {
-            \\        const memory = self.memory;
-            \\        return memory.getUint8(this.getPointer(memory));
-            \\      };
-            \\      setUint8(v) {
-            \\        const memory = self.memory;
-            \\        memory.setUint8(this.getPointer(memory), v);
-            \\      };
-            \\    }
-            \\
-        );
-    }
+    try writer.writeAll(
+        \\    this.instance = null;
+        \\    this._cached_data_view = null;
+        \\    this._export_reverse_handles = {};
+        \\    this._handles = new Map();
+        \\    this._handles.set(0, null);
+        \\    this._handles.set(1, window);
+        \\    this._handles.set(2, "");
+        \\    this._handles.set(3, this.exports);
+        \\    this._next_handle = 4;
+        \\  }
+        \\
+    ); // end constructor
+
+    try writer.writeAll(
+        \\  setInstance(instance) {
+        \\    this.instance = instance;
+        \\    const initialView = new DataView(instance.exports.memory.buffer);
+        \\    this._cached_data_view = initialView;
+        \\
+    );
 
     for (exportGlobals.items) |global| {
         var np = NameParser{ .slice = global };
@@ -445,9 +398,9 @@ pub fn main() !void {
 
         const name = np.slice;
         try writer.writeAll("    {\n");
-        try writer.writeAll("      const view = new Viewer(\"");
+        try writer.writeAll("      const ptr = initialView.getUint32(instance.exports.");
         try writer.writeAll(global);
-        try writer.writeAll("\");\n");
+        try writer.writeAll(".value, true);\n");
 
         try writer.writeAll("      Object.defineProperty(this.exports, \"");
         try writer.writeAll(name);
@@ -455,80 +408,54 @@ pub fn main() !void {
 
         switch (valueType) {
             .i32 => try writer.writeAll(
-                \\        get: () => view.getInt32(),
-                \\        set: v => view.setInt32(v),
+                \\        get: () => this.dataView().getInt32(ptr, true),
+                \\        set: v => this.dataView().setInt32(ptr, v, true),
                 \\
             ),
             .i64 => try writer.writeAll(
-                \\        get: () => view.getBigInt64(),
-                \\        set: v => view.setBigInt64(v),
+                \\        get: () => this.dataView().getBigInt64(ptr, true),
+                \\        set: v => this.dataView().setBigInt64(ptr, v, true),
                 \\
             ),
             .u32 => try writer.writeAll(
-                \\        get: () => view.getUInt32(),
-                \\        set: v => view.setUInt32(v),
+                \\        get: () => this.dataView().getUint32(ptr, true),
+                \\        set: v => this.dataView().setUint32(ptr, v, true),
                 \\
             ),
             .u64 => try writer.writeAll(
-                \\        get: () => view.getBigUInt64(),
-                \\        set: v => view.setBigUInt64(v),
+                \\        get: () => this.dataView().getBigUint64(ptr, true),
+                \\        set: v => this.dataView().setBigUint64(ptr, v, true),
                 \\
             ),
             .f32 => try writer.writeAll(
-                \\        get: () => view.getFloat32(),
-                \\        set: v => view.setFloat32(v),
+                \\        get: () => this.dataView().getFloat32(ptr, true),
+                \\        set: v => this.dataView().setFloat32(ptr, v, true),
                 \\
             ),
             .f64 => try writer.writeAll(
-                \\        get: () => view.getFloat64(),
-                \\        set: v => view.setFloat64(v),
+                \\        get: () => this.dataView().getFloat64(ptr, true),
+                \\        set: v => this.dataView().setFloat64(ptr, v, true),
                 \\
             ),
             .bool => try writer.writeAll(
-                \\        get: () => Boolean(view.getUint8()),
-                \\        set: v => view.setUint8(v ? 1 : 0),
+                \\        get: () => Boolean(this.dataView().getUint8(ptr, true)),
+                \\        set: v => this.dataView().setUint8(ptr, v, true ? 1 : 0),
                 \\
             ),
         }
 
         try writer.writeAll(
             \\        enumerable: true,
-            \\        configurable: false,
             \\      });
             \\
         );
 
-        try writer.writeAll("    }\n");
-    } // end export descriptors
+        try writer.writeAll("    }\n"); // end global
+    }
+    
+    try writer.writeAll("  }\n"); // end setInstance
 
-    try writer.writeAll(
-        \\    this._data_view = null;
-        \\    Object.defineProperty(this, "memory", {
-        \\      get: () => {
-        \\        if (this._data_view === null
-        \\        ||  this._data_view.buffer.byteLength !== this.instance.exports.memory.buffer.byteLength) {
-        \\          this._data_view = new DataView(this.instance.exports.memory.buffer);
-        \\        }
-        \\        return this._data_view;
-        \\      },
-        \\      enumerable: true,
-        \\      configurable: false,
-        \\    });
-        \\    this._export_reverse_handles = {};
-        \\    this._handles = new Map();
-        \\    this._handles.set(0, null);
-        \\    this._handles.set(1, window);
-        \\    this._handles.set(2, "");
-        \\    this._handles.set(3, this.exports);
-        \\    this._next_handle = 4;
-        \\
-    );
-
-    try writer.writeAll(
-        \\  }
-        \\};
-        \\
-    );
+    try writer.writeAll("};\n"); // end class
 
     std.sort.insertion([]const u8, export_names.items, {}, strBefore);
     if (export_names.items.len > 1) {

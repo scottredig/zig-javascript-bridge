@@ -7,7 +7,7 @@ var zjb = new Zjb();
 
 (function() {
 	WebAssembly.instantiateStreaming(fetch("example.wasm"), {env: env, zjb: zjb.imports}).then(function (results) {
-		zjb.instance = results.instance;
+		zjb.setInstance(results.instance);
 		results.instance.exports.main();
 
 		console.log("reading zjb global from zig", zjb.exports.checkTestVar());
