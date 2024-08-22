@@ -62,11 +62,15 @@ Zjb functions which return a value from Javascript require specifying which type
 - `void` is a valid type for method calls which have no return value.
 
 Zjb supports multiple ways to expose Zig functions to Javascript:
-- `zjb.exportFn` exposes the function with the passed name to Javascript.  This supports `zjb.Handle`, so if you pass an object from a Javascript function, a handle will automaticlaly be created and passed into Zig.  It is the responsibility of the Zig function being called to call `release` on any handles in its arguments at the appropriate time to avoid memory leaks.
+- `zjb.exportFn` exposes the function with the passed name to Javascript.  This supports `zjb.Handle`, so if you pass an object from a Javascript function, a handle will automatically be created and passed into Zig.  It is the responsibility of the Zig function being called to call `release` on any handles in its arguments at the appropriate time to avoid memory leaks.
 - `zjb.fnHandle` uses `zjb.exportFn` and additionally returns a `zjb.ConstHandle` to that function.  This can be used as a callback argument in Javascript functions.
 - Zig's `export` keyword on functions works as it always does in WASM, but doesn't support `zjb.Handle` correctly.
 
+Simple Zig global variables can also be exposed to Javascript:
+- `zjb.exportGlobal` exposes the variable with the passed address to Javascript. This supports `bool`, `i32`, `i64`, `u32`, `u64`, `f32`, and `f64`. Property descriptors will be created with get/set methods that provide access to the variable.
+
 A few extra notes:
+
 
 `zjb.string([]const u8)` decodes the slice of memory as a utf-8 string, returning a Handle.  The string will NOT update to reflect changes in the slice in Zig.
 
@@ -75,6 +79,8 @@ A few extra notes:
 The \_ArrayView functions (`i8ArrayView`, `u8ArrayView`, etc) create the respective JavaScript typed array backed by the same memory as the Zig WASM instance.
 
 `dataView` is similar in functionality to the ArrayView functions, but returns a DataView object.  Accepts any pointer or slice.
+
+The generated Javascript also includes a shortcut function named `dataView` to get an up-to-date cached `DataView` of the entire WebAssembly `Memory`. 
 
 > [!CAUTION]
 > There are three important notes about using the \_ArrayView and dataView functions:
