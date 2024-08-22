@@ -55,7 +55,7 @@ pub fn exportGlobal(comptime name: []const u8, comptime value: anytype) void {
     const T = @TypeOf(value.*);
     validateGlobalType(T);
 
-    return @export(value, .{ .name = "zjb_global_" ++ shortTypeNameGlobal(T) ++ "_" ++ name });
+    return @export(value, .{ .name = "zjb_global_" ++ @typeName(T) ++ "_" ++ name });
 }
 
 pub fn exportFn(comptime name: []const u8, comptime f: anytype) void {
@@ -318,19 +318,6 @@ fn validateGlobalType(comptime T: type) void {
         bool, i32, i64, u32, u64, f32, f64 => {},
         else => @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types here: bool, i32, i64, u32, u64, f32, f64."),
     }
-}
-
-fn shortTypeNameGlobal(comptime T: type) []const u8 {
-    return switch (T) {
-        bool => "b",
-        i32 => "i",
-        i64 => "I",
-        u32 => "u",
-        u64 => "U",
-        f32 => "f",
-        f64 => "F",
-        else => unreachable,
-    };
 }
 
 fn shortTypeName(comptime T: type) []const u8 {

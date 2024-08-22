@@ -108,6 +108,12 @@ const Zjb = class {
     this._next_handle++;
     return result;
   }
+  dataView() {
+    if (this._cached_data_view.buffer.byteLength !== this.instance.exports.memory.buffer.byteLength) {
+      this._cached_data_view = new DataView(this.instance.exports.memory.buffer);
+    }
+    return this._cached_data_view;
+  }
   constructor() {
     this._decoder = new TextDecoder();
     this.imports = {
@@ -123,6 +129,8 @@ const Zjb = class {
     };
     this.exports = {
     };
+    this.instance = null;
+    this._cached_data_view = null;
     this._export_reverse_handles = {};
     this._handles = new Map();
     this._handles.set(0, null);
@@ -130,6 +138,11 @@ const Zjb = class {
     this._handles.set(2, "");
     this._handles.set(3, this.exports);
     this._next_handle = 4;
+  }
+  setInstance(instance) {
+    this.instance = instance;
+    const initialView = new DataView(instance.exports.memory.buffer);
+    this._cached_data_view = initialView;
   }
 };
 

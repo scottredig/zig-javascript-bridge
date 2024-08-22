@@ -16,7 +16,7 @@
 
 			(function() {
 				WebAssembly.instantiateStreaming(fetch("simple.wasm"), {env: env, zjb: zjb.imports}).then(function (results) {
-					zjb.instance = results.instance;
+					zjb.setInstance(results.instance);
 					results.instance.exports.main();
 				});
 			})();

@@ -439,7 +439,7 @@ pub fn main() !void {
             ),
             .bool => try writer.writeAll(
                 \\        get: () => Boolean(this.dataView().getUint8(ptr, true)),
-                \\        set: v => this.dataView().setUint8(ptr, v, true ? 1 : 0),
+                \\        set: v => this.dataView().setUint8(ptr, v ? 1 : 0, true),
                 \\
             ),
         }
@@ -578,25 +578,25 @@ const NameParser = struct {
     }
 
     fn mustGlobalType(self: *NameParser) !GlobalType {
-        if (self.maybe("i")) {
+        if (self.maybe("i32")) {
             return .i32;
         }
-        if (self.maybe("I")) {
+        if (self.maybe("i64")) {
             return .i64;
         }
-        if (self.maybe("u")) {
+        if (self.maybe("u32")) {
             return .u32;
         }
-        if (self.maybe("U")) {
+        if (self.maybe("u64")) {
             return .u64;
         }
-        if (self.maybe("f")) {
+        if (self.maybe("f32")) {
             return .f32;
         }
-        if (self.maybe("F")) {
+        if (self.maybe("f64")) {
             return .f64;
         }
-        if (self.maybe("b")) {
+        if (self.maybe("bool")) {
             return .bool;
         }
         return ExtractError.InvalidExportedName;
