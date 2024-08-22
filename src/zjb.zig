@@ -316,7 +316,7 @@ fn validateFromJavascriptArgumentType(comptime T: type) void {
 fn validateGlobalType(comptime T: type) void {
     switch (T) {
         bool, i32, i64, u32, u64, f32, f64 => {},
-        else => @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types here: bool, i32, i64, f32, f64."),
+        else => @compileError("unexpected type " ++ @typeName(T) ++ ". Supported types here: bool, i32, i64, u32, u64, f32, f64."),
     }
 }
 
