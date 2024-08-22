@@ -360,78 +360,80 @@ pub fn main() !void {
 
     try writer.writeAll("    };\n"); // end export object
 
-    try writer.writeAll(
-        \\    const self = this;
-        \\    class Viewer {
-        \\      constructor(global) {
-        \\        this.global = global;
-        \\        this._pointer = null;
-        \\      }
-        \\      getPointer(memory) {
-        \\        if (this._pointer === null) {
-        \\          this._pointer = memory.getInt32(self.instance.exports[this.global].value, true);
-        \\        }
-        \\        return this._pointer;
-        \\      }
-        \\      getInt32() {
-        \\        const memory = self.memory;
-        \\        return memory.getInt32(this.getPointer(memory), true);
-        \\      };
-        \\      setInt32(v) {
-        \\        const memory = self.memory;
-        \\        memory.setInt32(this.getPointer(memory), v, true);
-        \\      };
-        \\      getBigInt64() {
-        \\        const memory = self.memory;
-        \\        return memory.getBigInt64(this.getPointer(memory), true);
-        \\      };
-        \\      setBigInt64(v) {
-        \\        const memory = self.memory;
-        \\        memory.setBigInt64(this.getPointer(memory), v, true);
-        \\      };
-        \\      getUInt32() {
-        \\        const memory = self.memory;
-        \\        return memory.getUint32(this.getPointer(memory), true);
-        \\      };
-        \\      setUInt32(v) {
-        \\        const memory = self.memory;
-        \\        memory.setUint32(this.getPointer(memory), v, true);
-        \\      };
-        \\      getBigUInt64() {
-        \\        const memory = self.memory;
-        \\        return memory.getBigUint64(this.getPointer(memory), true);
-        \\      };
-        \\      setBigUInt64(v) {
-        \\        const memory = self.memory;
-        \\        memory.setBigUint64(this.getPointer(memory), v, true);
-        \\      };
-        \\      getFloat32() {
-        \\        const memory = self.memory;
-        \\        return memory.getFloat32(this.getPointer(memory), true);
-        \\      };
-        \\      setFloat32(v) {
-        \\        const memory = self.memory;
-        \\        memory.setFloat32(this.getPointer(memory), v, true);
-        \\      };
-        \\      getFloat64() {
-        \\        const memory = self.memory;
-        \\        return memory.getFloat64(this.getPointer(memory), true);
-        \\      };
-        \\      setFloat64(v) {
-        \\        const memory = self.memory;
-        \\        memory.setFloat64(this.getPointer(memory), v, true);
-        \\      };
-        \\      getUint8() {
-        \\        const memory = self.memory;
-        \\        return memory.getUint8(this.getPointer(memory));
-        \\      };
-        \\      setUint8(v) {
-        \\        const memory = self.memory;
-        \\        memory.setUint8(this.getPointer(memory), v);
-        \\      };
-        \\    }
-        \\
-    );
+    if (exportGlobals.items.len > 0) {
+        try writer.writeAll(
+            \\    const self = this;
+            \\    class Viewer {
+            \\      constructor(global) {
+            \\        this.global = global;
+            \\        this._pointer = null;
+            \\      }
+            \\      getPointer(memory) {
+            \\        if (this._pointer === null) {
+            \\          this._pointer = memory.getInt32(self.instance.exports[this.global].value, true);
+            \\        }
+            \\        return this._pointer;
+            \\      }
+            \\      getInt32() {
+            \\        const memory = self.memory;
+            \\        return memory.getInt32(this.getPointer(memory), true);
+            \\      };
+            \\      setInt32(v) {
+            \\        const memory = self.memory;
+            \\        memory.setInt32(this.getPointer(memory), v, true);
+            \\      };
+            \\      getBigInt64() {
+            \\        const memory = self.memory;
+            \\        return memory.getBigInt64(this.getPointer(memory), true);
+            \\      };
+            \\      setBigInt64(v) {
+            \\        const memory = self.memory;
+            \\        memory.setBigInt64(this.getPointer(memory), v, true);
+            \\      };
+            \\      getUInt32() {
+            \\        const memory = self.memory;
+            \\        return memory.getUint32(this.getPointer(memory), true);
+            \\      };
+            \\      setUInt32(v) {
+            \\        const memory = self.memory;
+            \\        memory.setUint32(this.getPointer(memory), v, true);
+            \\      };
+            \\      getBigUInt64() {
+            \\        const memory = self.memory;
+            \\        return memory.getBigUint64(this.getPointer(memory), true);
+            \\      };
+            \\      setBigUInt64(v) {
+            \\        const memory = self.memory;
+            \\        memory.setBigUint64(this.getPointer(memory), v, true);
+            \\      };
+            \\      getFloat32() {
+            \\        const memory = self.memory;
+            \\        return memory.getFloat32(this.getPointer(memory), true);
+            \\      };
+            \\      setFloat32(v) {
+            \\        const memory = self.memory;
+            \\        memory.setFloat32(this.getPointer(memory), v, true);
+            \\      };
+            \\      getFloat64() {
+            \\        const memory = self.memory;
+            \\        return memory.getFloat64(this.getPointer(memory), true);
+            \\      };
+            \\      setFloat64(v) {
+            \\        const memory = self.memory;
+            \\        memory.setFloat64(this.getPointer(memory), v, true);
+            \\      };
+            \\      getUint8() {
+            \\        const memory = self.memory;
+            \\        return memory.getUint8(this.getPointer(memory));
+            \\      };
+            \\      setUint8(v) {
+            \\        const memory = self.memory;
+            \\        memory.setUint8(this.getPointer(memory), v);
+            \\      };
+            \\    }
+            \\
+        );
+    }
 
     for (exportGlobals.items) |global| {
         var np = NameParser{ .slice = global };
