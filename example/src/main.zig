@@ -165,6 +165,20 @@ fn incrementAndGet(increment: i32) callconv(.C) i32 {
     return value;
 }
 
+var test_var: f32 = 1337.7331;
+fn checkTestVar() callconv(.C) f32 {
+    return test_var;
+}
+
+fn setTestVar() callconv(.C) f32 {
+    test_var = 42.24;
+    return test_var;
+}
+
 comptime {
     zjb.exportFn("incrementAndGet", incrementAndGet);
+
+    zjb.exportGlobal("test_var", &test_var);
+    zjb.exportFn("checkTestVar", checkTestVar);
+    zjb.exportFn("setTestVar", setTestVar);
 }

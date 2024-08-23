@@ -11,10 +11,12 @@ pub fn main() !void {
         return ExtractError.BadArguments;
     }
 
-    var imports = std.ArrayList([]const u8).init(alloc);
-    defer imports.deinit();
-    var exports = std.ArrayList([]const u8).init(alloc);
-    defer exports.deinit();
+    var importFunctions = std.ArrayList([]const u8).init(alloc);
+    defer importFunctions.deinit();
+    var exportFunctions = std.ArrayList([]const u8).init(alloc);
+    defer exportFunctions.deinit();
+    var exportGlobals = std.ArrayList([]const u8).init(alloc);
+    defer exportGlobals.deinit();
 
     {
         var file = try std.fs.openFileAbsolute(args[3], .{});
@@ -56,7 +58,7 @@ pub fn main() !void {
                         if (desc_type != 0) { // Not a function?
                             return ExtractError.ImportTypeNotSupported;
                         }
-                        try imports.append(try alloc.dupe(u8, name));
+                        try importFunctions.append(try alloc.dupe(u8, name));
                     }
                 }
             } else if (section_id == 7) {
@@ -70,7 +72,9 @@ pub fn main() !void {
                     _ = desc_index;
 
                     if (desc_type == 0 and std.mem.startsWith(u8, name, "zjb_fn")) {
-                        try exports.append(try alloc.dupe(u8, name));
+                        try exportFunctions.append(try alloc.dupe(u8, name));
+                    } else if (std.mem.startsWith(u8, name, "zjb_global")) {
+                        try exportGlobals.append(try alloc.dupe(u8, name));
                     }
                 }
             } else {
@@ -79,8 +83,9 @@ pub fn main() !void {
         }
     }
 
-    std.sort.insertion([]const u8, imports.items, {}, strBefore);
-    std.sort.insertion([]const u8, exports.items, {}, strBefore);
+    std.sort.insertion([]const u8, importFunctions.items, {}, strBefore);
+    std.sort.insertion([]const u8, exportFunctions.items, {}, strBefore);
+    std.sort.insertion([]const u8, exportGlobals.items, {}, strBefore);
 
     var out_file = try std.fs.createFileAbsolute(args[1], .{});
     defer out_file.close();
@@ -99,6 +104,12 @@ pub fn main() !void {
         \\    this._next_handle++;
         \\    return result;
         \\  }
+        \\  dataView() {
+        \\    if (this._cached_data_view.buffer.byteLength !== this.instance.exports.memory.buffer.byteLength) {
+        \\      this._cached_data_view = new DataView(this.instance.exports.memory.buffer);
+        \\    }
+        \\    return this._cached_data_view;
+        \\  }
         \\  constructor() {
         \\    this._decoder = new TextDecoder();
         \\    this.imports = {
@@ -109,7 +120,7 @@ pub fn main() !void {
     var func_args = std.ArrayList(ArgType).init(alloc);
     defer func_args.deinit();
 
-    implement_functions: for (imports.items) |func| {
+    implement_functions: for (importFunctions.items) |func| {
         if (std.mem.eql(u8, lastFunc, func)) {
             continue;
         }
@@ -160,7 +171,7 @@ pub fn main() !void {
 
         if (method != .get) {
             while (!(np.maybe("_") or np.slice.len == 0)) {
-                try func_args.append(try np.mustType());
+                try func_args.append(try np.mustArgType());
             }
         }
         switch (method) {
@@ -185,7 +196,7 @@ pub fn main() !void {
         const ret_type = switch (method) {
             .new => ArgType.object,
             .set, .indexSet => ArgType.void,
-            else => try np.mustType(),
+            else => try np.mustArgType(),
         };
 
         switch (method) {
@@ -275,17 +286,17 @@ pub fn main() !void {
     var export_names = std.ArrayList([]const u8).init(alloc);
     defer export_names.deinit();
 
-    for (exports.items) |func| {
+    for (exportFunctions.items) |func| {
         func_args.clearRetainingCapacity();
 
         var np = NameParser{ .slice = func };
         try np.must("zjb_fn_");
 
         while (!(np.maybe("_") or np.slice.len == 0)) {
-            try func_args.append(try np.mustType());
+            try func_args.append(try np.mustArgType());
         }
 
-        const ret_type = try np.mustType();
+        const ret_type = try np.mustArgType();
         try np.must("_");
 
         const name = np.slice;
@@ -352,9 +363,12 @@ pub fn main() !void {
         }
         try writer.writeAll(";\n      },\n");
     }
-    try writer.writeAll("    };\n"); // end exports
+
+    try writer.writeAll("    };\n"); // end export object
 
     try writer.writeAll(
+        \\    this.instance = null;
+        \\    this._cached_data_view = null;
         \\    this._export_reverse_handles = {};
         \\    this._handles = new Map();
         \\    this._handles.set(0, null);
@@ -362,14 +376,86 @@ pub fn main() !void {
         \\    this._handles.set(2, "");
         \\    this._handles.set(3, this.exports);
         \\    this._next_handle = 4;
+        \\  }
+        \\
+    ); // end constructor
+
+    try writer.writeAll(
+        \\  setInstance(instance) {
+        \\    this.instance = instance;
+        \\    const initialView = new DataView(instance.exports.memory.buffer);
+        \\    this._cached_data_view = initialView;
         \\
     );
 
-    try writer.writeAll(
-        \\  }
-        \\};
-        \\
-    );
+    for (exportGlobals.items) |global| {
+        var np = NameParser{ .slice = global };
+        try np.must("zjb_global_");
+
+        const valueType = try np.mustGlobalType();
+
+        try np.must("_");
+
+        const name = np.slice;
+        try writer.writeAll("    {\n");
+        try writer.writeAll("      const ptr = initialView.getUint32(instance.exports.");
+        try writer.writeAll(global);
+        try writer.writeAll(".value, true);\n");
+
+        try writer.writeAll("      Object.defineProperty(this.exports, \"");
+        try writer.writeAll(name);
+        try writer.writeAll("\", {\n");
+
+        switch (valueType) {
+            .i32 => try writer.writeAll(
+                \\        get: () => this.dataView().getInt32(ptr, true),
+                \\        set: v => this.dataView().setInt32(ptr, v, true),
+                \\
+            ),
+            .i64 => try writer.writeAll(
+                \\        get: () => this.dataView().getBigInt64(ptr, true),
+                \\        set: v => this.dataView().setBigInt64(ptr, v, true),
+                \\
+            ),
+            .u32 => try writer.writeAll(
+                \\        get: () => this.dataView().getUint32(ptr, true),
+                \\        set: v => this.dataView().setUint32(ptr, v, true),
+                \\
+            ),
+            .u64 => try writer.writeAll(
+                \\        get: () => this.dataView().getBigUint64(ptr, true),
+                \\        set: v => this.dataView().setBigUint64(ptr, v, true),
+                \\
+            ),
+            .f32 => try writer.writeAll(
+                \\        get: () => this.dataView().getFloat32(ptr, true),
+                \\        set: v => this.dataView().setFloat32(ptr, v, true),
+                \\
+            ),
+            .f64 => try writer.writeAll(
+                \\        get: () => this.dataView().getFloat64(ptr, true),
+                \\        set: v => this.dataView().setFloat64(ptr, v, true),
+                \\
+            ),
+            .bool => try writer.writeAll(
+                \\        get: () => Boolean(this.dataView().getUint8(ptr, true)),
+                \\        set: v => this.dataView().setUint8(ptr, v ? 1 : 0, true),
+                \\
+            ),
+        }
+
+        try writer.writeAll(
+            \\        enumerable: true,
+            \\      });
+            \\
+        );
+
+        try writer.writeAll("    }\n"); // end global
+    }
+
+    try writer.writeAll("  }\n"); // end setInstance
+
+    try writer.writeAll("};\n"); // end class
 
     std.sort.insertion([]const u8, export_names.items, {}, strBefore);
     if (export_names.items.len > 1) {
@@ -456,6 +542,16 @@ const ArgType = enum {
     object,
 };
 
+const GlobalType = enum {
+    i32,
+    i64,
+    u32,
+    u64,
+    f32,
+    f64,
+    bool,
+};
+
 const NameParser = struct {
     slice: []const u8,
 
@@ -481,7 +577,32 @@ const NameParser = struct {
         }
     }
 
-    fn mustType(self: *NameParser) !ArgType {
+    fn mustGlobalType(self: *NameParser) !GlobalType {
+        if (self.maybe("i32")) {
+            return .i32;
+        }
+        if (self.maybe("i64")) {
+            return .i64;
+        }
+        if (self.maybe("u32")) {
+            return .u32;
+        }
+        if (self.maybe("u64")) {
+            return .u64;
+        }
+        if (self.maybe("f32")) {
+            return .f32;
+        }
+        if (self.maybe("f64")) {
+            return .f64;
+        }
+        if (self.maybe("bool")) {
+            return .bool;
+        }
+        return ExtractError.InvalidExportedName;
+    }
+
+    fn mustArgType(self: *NameParser) !ArgType {
         if (self.maybe("n")) {
             return .number;
         }
@@ -510,7 +631,7 @@ const builtins = [_][]const u8{
     \\      },
     ,
     \\      "dataview": (ptr, len) => {
-    \\        return this.new_handle(new DataView(this.instance.exports.memory.buffer,ptr, len));
+    \\        return this.new_handle(new DataView(this.instance.exports.memory.buffer, ptr, len));
     \\      },
     ,
     \\      "throw": (id) => {
@@ -530,7 +651,7 @@ const builtins = [_][]const u8{
     \\      "handleCount": () => {
     \\        return this._handles.size;
     \\      },
-
+    ,
     \\      "i8ArrayView": (ptr, len) => {
     \\        return this.new_handle(new Int8Array(this.instance.exports.memory.buffer, ptr, len));
     \\      },
