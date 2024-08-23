@@ -452,7 +452,7 @@ pub fn main() !void {
 
         try writer.writeAll("    }\n"); // end global
     }
-    
+
     try writer.writeAll("  }\n"); // end setInstance
 
     try writer.writeAll("};\n"); // end class

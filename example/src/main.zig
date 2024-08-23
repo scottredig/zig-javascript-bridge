@@ -177,7 +177,7 @@ fn setTestVar() callconv(.C) f32 {
 
 comptime {
     zjb.exportFn("incrementAndGet", incrementAndGet);
-    
+
     zjb.exportGlobal("test_var", &test_var);
     zjb.exportFn("checkTestVar", checkTestVar);
     zjb.exportFn("setTestVar", setTestVar);
