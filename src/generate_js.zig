@@ -664,36 +664,4 @@ const builtins = [_][]const u8{
     \\        return this.new_handle(new Uint8ClampedArray(this.instance.exports.memory.buffer, ptr, len));
     \\      },
     ,
-    \\      "i16ArrayView": (ptr, len) => {
-    \\        return this.new_handle(new Int16Array(this.instance.exports.memory.buffer, ptr, len));
-    \\      },
-    ,
-    \\      "u16ArrayView": (ptr, len) => {
-    \\        return this.new_handle(new Uint16Array(this.instance.exports.memory.buffer, ptr, len));
-    \\      },
-    ,
-    \\      "i32ArrayView": (ptr, len) => {
-    \\        return this.new_handle(new Int32Array(this.instance.exports.memory.buffer, ptr, len));
-    \\      },
-    ,
-    \\      "u32ArrayView": (ptr, len) => {
-    \\        return this.new_handle(new Uint32Array(this.instance.exports.memory.buffer, ptr, len));
-    \\      },
-    ,
-    \\      "i64ArrayView": (ptr, len) => {
-    \\        return this.new_handle(new BigInt64Array(this.instance.exports.memory.buffer, ptr, len));
-    \\      },
-    ,
-    \\      "u64ArrayView": (ptr, len) => {
-    \\        return this.new_handle(new BigUint64Array(this.instance.exports.memory.buffer, ptr, len));
-    \\      },
-    ,
-    \\      "f32ArrayView": (ptr, len) => {
-    \\        return this.new_handle(new Float32Array(this.instance.exports.memory.buffer, ptr, len));
-    \\      },
-    ,
-    \\      "f64ArrayView": (ptr, len) => {
-    \\        return this.new_handle(new Float64Array(this.instance.exports.memory.buffer, ptr, len));
-    \\      },
-    ,
 };

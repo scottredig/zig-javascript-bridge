@@ -101,30 +101,6 @@ pub fn u8ArrayView(data: []const u8) Handle {
 pub fn u8ClampedArrayView(data: []const u8) Handle {
     return zjb.u8ClampedArrayView(data.ptr, data.len);
 }
-pub fn i16ArrayView(data: []const i16) Handle {
-    return zjb.i16ArrayView(data.ptr, data.len);
-}
-pub fn u16ArrayView(data: []const u16) Handle {
-    return zjb.u16ArrayView(data.ptr, data.len);
-}
-pub fn i32ArrayView(data: []const i32) Handle {
-    return zjb.i32ArrayView(data.ptr, data.len);
-}
-pub fn u32ArrayView(data: []const u32) Handle {
-    return zjb.u32ArrayView(data.ptr, data.len);
-}
-pub fn i64ArrayView(data: []const i64) Handle {
-    return zjb.i64ArrayView(data.ptr, data.len);
-}
-pub fn u64ArrayView(data: []const u64) Handle {
-    return zjb.u64ArrayView(data.ptr, data.len);
-}
-pub fn f32ArrayView(data: []const f32) Handle {
-    return zjb.f32ArrayView(data.ptr, data.len);
-}
-pub fn f64ArrayView(data: []const f64) Handle {
-    return zjb.f64ArrayView(data.ptr, data.len);
-}
 
 pub fn dataView(data: anytype) Handle {
     switch (@typeInfo(@TypeOf(data))) {
@@ -352,12 +328,4 @@ const zjb = struct {
     extern "zjb" fn i8ArrayView(ptr: *const anyopaque, size: u32) Handle;
     extern "zjb" fn u8ArrayView(ptr: *const anyopaque, size: u32) Handle;
     extern "zjb" fn u8ClampedArrayView(ptr: *const anyopaque, size: u32) Handle;
-    extern "zjb" fn i16ArrayView(ptr: *const anyopaque, size: u32) Handle;
-    extern "zjb" fn u16ArrayView(ptr: *const anyopaque, size: u32) Handle;
-    extern "zjb" fn i32ArrayView(ptr: *const anyopaque, size: u32) Handle;
-    extern "zjb" fn u32ArrayView(ptr: *const anyopaque, size: u32) Handle;
-    extern "zjb" fn i64ArrayView(ptr: *const anyopaque, size: u32) Handle;
-    extern "zjb" fn u64ArrayView(ptr: *const anyopaque, size: u32) Handle;
-    extern "zjb" fn f32ArrayView(ptr: *const anyopaque, size: u32) Handle;
-    extern "zjb" fn f64ArrayView(ptr: *const anyopaque, size: u32) Handle;
 };

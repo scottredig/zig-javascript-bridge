@@ -27,16 +27,20 @@ export fn main() void {
 
     logStr("\n============================= Array View Example =============================");
     {
-        var arr = [_]u16{ 1, 2, 3 };
-        const obj = zjb.u16ArrayView(&arr);
+        var arr = [_]u8{ 1, 2, 3 };
+        const obj = zjb.u8ArrayView(&arr);
         defer obj.release();
 
-        logStr("View of Zig u16 array from Javascript, with its length");
+        logStr("View of Zig u8 array from Javascript, with its length");
         log(obj);
         log(obj.get("length", f64)); // 3
 
         arr[0] = 4;
         logStr("Changes from Zig are visible in Javascript");
+        log(obj);
+
+        obj.indexSet(1, 5);
+        logStr("Changes from Javascript are visible in Zig");
         log(obj);
 
         logStr("Unless wasm's memory grows, which causes the ArrayView to be invalidated.");
