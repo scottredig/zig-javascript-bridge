@@ -147,24 +147,24 @@ pub fn main() !void {
             call,
             new,
         };
-        const method = blk: {
+        const method: Methods = blk: {
             if (np.maybe("get_")) {
-                break :blk Methods.get;
+                break :blk .get;
             }
             if (np.maybe("set_")) {
-                break :blk Methods.set;
+                break :blk .set;
             }
             if (np.maybe("indexGet_")) {
-                break :blk Methods.indexGet;
+                break :blk .indexGet;
             }
             if (np.maybe("indexSet_")) {
-                break :blk Methods.indexSet;
+                break :blk .indexSet;
             }
             if (np.maybe("call_")) {
-                break :blk Methods.call;
+                break :blk .call;
             }
             if (np.maybe("new_")) {
-                break :blk Methods.new;
+                break :blk .new;
             }
             return ExtractError.InvalidExportedName;
         };
