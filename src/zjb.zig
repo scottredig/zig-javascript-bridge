@@ -227,7 +227,7 @@ pub const Handle = enum(i32) {
 
     fn invoke(handle: Handle, args: anytype, comptime RetType: type, comptime prefix: []const u8, comptime suffix: []const u8) RetType {
         validateFromJavascriptReturnType(RetType);
-        const fields = comptime @typeInfo(@TypeOf(args)).Struct.fields;
+        const fields = comptime @typeInfo(@TypeOf(args)).@"struct".fields;
         comptime var call_params: [fields.len + 1]std.builtin.Type.Fn.Param = undefined;
         comptime var extern_name: []const u8 = prefix;
 
@@ -247,7 +247,7 @@ pub const Handle = enum(i32) {
             extern_name = extern_name ++ comptime shortTypeName(field.type);
         }
 
-        const F = @Type(.{ .Fn = .{
+        const F = @Type(.{ .@"fn" = .{
             .calling_convention = .C,
             .is_generic = false,
             .is_var_args = false,
