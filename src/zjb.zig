@@ -60,7 +60,7 @@ pub fn exportGlobal(comptime name: []const u8, comptime value: anytype) void {
 
 pub fn exportFn(comptime name: []const u8, comptime f: anytype) void {
     comptime var export_name: []const u8 = "zjb_fn_";
-    const type_info = @typeInfo(@TypeOf(f)).Fn;
+    const type_info = @typeInfo(@typeInfo(@TypeOf(f)).pointer.child).@"fn";
     validateToJavascriptReturnType(type_info.return_type orelse void);
     inline for (type_info.params) |param| {
         validateFromJavascriptArgumentType(param.type orelse void);
