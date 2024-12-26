@@ -1,5 +1,5 @@
 .{
-    .name = "javascript-bridge",
+    .name = "zjb",
     .version = "0.0.0",
     .paths = .{
         "build.zig",
