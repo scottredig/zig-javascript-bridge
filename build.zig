@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
     const generate_js = b.addExecutable(.{
         .name = "generate_js",
         .root_source_file = b.path("src/generate_js.zig"),
-        .target = b.host,
+        .target = b.graph.host,
         // Reusing this will occur more often than compiling this, as
         // it usually can be cached.  So faster execution is worth slower
         // initial build.

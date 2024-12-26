@@ -60,7 +60,7 @@ pub fn exportGlobal(comptime name: []const u8, comptime value: anytype) void {
 
 pub fn exportFn(comptime name: []const u8, comptime f: anytype) void {
     comptime var export_name: []const u8 = "zjb_fn_";
-    const type_info = @typeInfo(@TypeOf(f)).Fn;
+    const type_info = @typeInfo(@typeInfo(@TypeOf(f)).pointer.child).@"fn";
     validateToJavascriptReturnType(type_info.return_type orelse void);
     inline for (type_info.params) |param| {
         validateFromJavascriptArgumentType(param.type orelse void);
@@ -104,7 +104,7 @@ pub fn u8ClampedArrayView(data: []const u8) Handle {
 
 pub fn dataView(data: anytype) Handle {
     switch (@typeInfo(@TypeOf(data))) {
-        .Pointer => |ptr| {
+        .pointer => |ptr| {
             if (ptr.size == .One) {
                 return zjb.dataview(data, @sizeOf(ptr.child));
             } else if (ptr.size == .Slice) {
@@ -227,7 +227,7 @@ pub const Handle = enum(i32) {
 
     fn invoke(handle: Handle, args: anytype, comptime RetType: type, comptime prefix: []const u8, comptime suffix: []const u8) RetType {
         validateFromJavascriptReturnType(RetType);
-        const fields = comptime @typeInfo(@TypeOf(args)).Struct.fields;
+        const fields = comptime @typeInfo(@TypeOf(args)).@"struct".fields;
         comptime var call_params: [fields.len + 1]std.builtin.Type.Fn.Param = undefined;
         comptime var extern_name: []const u8 = prefix;
 
@@ -247,7 +247,7 @@ pub const Handle = enum(i32) {
             extern_name = extern_name ++ comptime shortTypeName(field.type);
         }
 
-        const F = @Type(.{ .Fn = .{
+        const F = @Type(.{ .@"fn" = .{
             .calling_convention = .C,
             .is_generic = false,
             .is_var_args = false,
