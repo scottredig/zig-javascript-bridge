@@ -104,7 +104,7 @@ pub fn u8ClampedArrayView(data: []const u8) Handle {
 
 pub fn dataView(data: anytype) Handle {
     switch (@typeInfo(@TypeOf(data))) {
-        .Pointer => |ptr| {
+        .pointer => |ptr| {
             if (ptr.size == .One) {
                 return zjb.dataview(data, @sizeOf(ptr.child));
             } else if (ptr.size == .Slice) {
