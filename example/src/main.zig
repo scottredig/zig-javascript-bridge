@@ -140,7 +140,7 @@ export fn main() void {
     }
 
     logStr("\n============================= Exporting functions (press a key for a callback) =============================");
-    zjb.global("document").call("addEventListener", .{ zjb.constString("keydown"), zjb.fnHandle("keydownCallback", keydownCallback) }, void);
+    zjb.global("document").call("addEventListener", .{ zjb.constString("keydown"), zjb.fnHandle("keydownCallback", &keydownCallback) }, void);
 
     logStr("\n============================= Handle vs ConstHandle =============================");
     {
@@ -180,9 +180,9 @@ fn setTestVar() callconv(.C) f32 {
 }
 
 comptime {
-    zjb.exportFn("incrementAndGet", incrementAndGet);
+    zjb.exportFn("incrementAndGet", &incrementAndGet);
 
     zjb.exportGlobal("test_var", &test_var);
-    zjb.exportFn("checkTestVar", checkTestVar);
-    zjb.exportFn("setTestVar", setTestVar);
+    zjb.exportFn("checkTestVar", &checkTestVar);
+    zjb.exportFn("setTestVar", &setTestVar);
 }
