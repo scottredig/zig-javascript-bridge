@@ -16,6 +16,21 @@ Is equivalent to this Javascript:
 console.log("Hello from Zig");
 ```
 
+## Generated Javascript
+
+The generated Javascript can be retrieved through
+the zig build Dependency Interface:
+
+```zig
+const js_basename = "zjb_extract.js";
+const zjb = b.dependency("zjb", .{
+    .@"wasm-bindgen-bin" = example.getEmittedBin(),
+    .@"wasm-bindgen-name" = @as([]const u8, js_basename),
+    .@"wasm-bindgen-classname" = @as([]const u8, "Zjb"),
+});
+const extract_example_out = zjb.namedLazyPath(js_basename);
+```
+
 ## Project Status
 
 ZJB is fully functional and is ready to be used in other projects.  However 1.0 will not be tagged until there is significant enough usage that confidence in the API not needing further changes is high.

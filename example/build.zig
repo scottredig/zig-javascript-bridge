@@ -1,10 +1,10 @@
 const std = @import("std");
+const LazyPath = std.Build.LazyPath;
 
 pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const dir = std.Build.InstallDir.bin;
 
-    const zjb = b.dependency("zjb", .{});
 
     const example = b.addExecutable(.{
         .name = "example",
@@ -12,14 +12,18 @@ pub fn build(b: *std.Build) void {
         .target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .freestanding }),
         .optimize = optimize,
     });
-    example.root_module.addImport("zjb", zjb.module("zjb"));
     example.entry = .disabled;
     example.rdynamic = true;
 
-    const extract_example = b.addRunArtifact(zjb.artifact("generate_js"));
-    const extract_example_out = extract_example.addOutputFileArg("zjb_extract.js");
-    extract_example.addArg("Zjb"); // Name of js class.
-    extract_example.addArtifactArg(example);
+    const js_basename = "zjb_extract.js";
+    const zjb = b.dependency("zjb", .{
+        .@"wasm-bindgen-bin" = example.getEmittedBin(),
+        .@"wasm-bindgen-name" = @as([]const u8, js_basename),
+        .@"wasm-bindgen-classname" = @as([]const u8, "Zjb"),
+    });
+    const extract_example_out = zjb.namedLazyPath(js_basename);
+
+    example.root_module.addImport("zjb", zjb.module("zjb"));
 
     const example_step = b.step("example", "Build the hello Zig example");
     example_step.dependOn(&b.addInstallArtifact(example, .{
