@@ -12,8 +12,11 @@ pub fn main() !void {
     }
 
     const is_module = if (std.mem.eql(u8, args[4], "true"))
-        true else if (std.mem.eql(u8, args[4], "false")) false
-        else return ExtractError.ExpectedBoolArgument;
+        true
+    else if (std.mem.eql(u8, args[4], "false"))
+        false
+    else
+        return ExtractError.ExpectedBoolArgument;
 
     var importFunctions = std.ArrayList([]const u8).init(alloc);
     defer importFunctions.deinit();

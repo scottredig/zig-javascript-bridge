@@ -5,7 +5,6 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const dir = std.Build.InstallDir.bin;
 
-
     const example = b.addExecutable(.{
         .name = "example",
         .root_source_file = b.path("src/main.zig"),

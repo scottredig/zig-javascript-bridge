@@ -24,7 +24,7 @@ pub fn build(b: *std.Build) void {
 
     // Generate JS for binary supplied through options
     // usage from build.zig through the Dependency Interface:
-    // 
+    //
     // const js_basename = "zjb_extract.js";
     // const zjb = b.dependency("zjb", .{
     //     .@"wasm-bindgen-bin" = example.getEmittedBin(),
