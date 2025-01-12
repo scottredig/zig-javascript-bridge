@@ -48,6 +48,11 @@ pub fn build(b: *std.Build) void {
         "wasm-bindgen-bin",
         "wasm Binary for Binding Generation",
     );
+    const wasm_bindgen_module = b.option(
+        bool,
+        "wasm-bindgen-module",
+        "output an ES6 module export",
+    ) orelse false;
 
     if (wasm_bindgen_bin) |wasm_bin| {
         const extract_js = b.addRunArtifact(generate_js);
@@ -55,5 +60,6 @@ pub fn build(b: *std.Build) void {
         extract_js.addArg(wasm_bindgen_classname);
         extract_js.addFileArg(wasm_bin);
         b.addNamedLazyPath(wasm_bindgen_name, extract_js_out);
+        extract_js.addArg(if (wasm_bindgen_module) "true" else "false");
     }
 }
