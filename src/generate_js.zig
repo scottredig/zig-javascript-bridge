@@ -98,6 +98,7 @@ pub fn main() !void {
     defer out_file.close();
     const writer = out_file.writer();
 
+    try writer.writeAll("\"use strict\";\n");
     try writer.writeAll("const ");
     try writer.writeAll(args[2]);
     try writer.writeAll(
