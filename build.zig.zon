@@ -1,6 +1,7 @@
 .{
-    .name = "zjb",
+    .name = .javascript_bridge,
     .version = "0.0.0",
+    .fingerprint = 0x2cab041a0159e113,
     .paths = .{
         "build.zig",
         "build.zig.zon",
