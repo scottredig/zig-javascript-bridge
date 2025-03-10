@@ -105,9 +105,9 @@ pub fn u8ClampedArrayView(data: []const u8) Handle {
 pub fn dataView(data: anytype) Handle {
     switch (@typeInfo(@TypeOf(data))) {
         .pointer => |ptr| {
-            if (ptr.size == .One) {
+            if (ptr.size == .one) {
                 return zjb.dataview(data, @sizeOf(ptr.child));
-            } else if (ptr.size == .Slice) {
+            } else if (ptr.size == .slice) {
                 return zjb.dataview(data.ptr, data.len * @sizeOf(ptr.child));
             } else {
                 @compileError("dataview pointers must be single objects or slices, got: " ++ @typeName(@TypeOf(data)));
