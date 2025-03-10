@@ -603,7 +603,19 @@ const NameParser = struct {
     }
 
     fn mustArgType(self: *NameParser) !ArgType {
-        if (self.maybe("n")) {
+        // if (self.maybe("n")) {
+        //     return .number;
+        // }
+        if (self.maybe("i32")) {
+            return .number;
+        }
+        if (self.maybe("i64")) {
+            return .number;
+        }
+        if (self.maybe("f32")) {
+            return .number;
+        }
+        if (self.maybe("f64")) {
             return .number;
         }
         if (self.maybe("b")) {

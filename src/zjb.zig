@@ -301,17 +301,24 @@ fn shortTypeName(comptime T: type) []const u8 {
         Handle, ConstHandle => "o",
         void => "v",
         bool => "b",
-        // The number types map to the same name, even though
-        // the function signatures are different.  Zig and Wasm
-        // handle this just fine, and produces fewer unique methods
-        // in javascript so there's no reason not to do it.
-        i32, i64, f32, f64, comptime_int, comptime_float => "n",
+        // // The number types map to the same name, even though
+        // // the function signatures are different.  Zig and Wasm
+        // // handle this just fine, and produces fewer unique methods
+        // // in javascript so there's no reason not to do it.
+        // i32, i64, f32, f64, comptime_int, comptime_float => "n",
+
+        // The above should be true, but 0.14.0 broke it.  See https://github.com/scottredig/zig-javascript-bridge/issues/14
+        i32 => "i32",
+        i64 => "i64",
+        f32 => "f32",
+        f64, comptime_float, comptime_int => "f64",
+
         else => unreachable,
     };
 }
 
 fn mapType(comptime T: type) type {
-    if (T == comptime_int or T == comptime_float) {
+    if (T == comptime_float or T == comptime_int) {
         return f64;
     }
     return T;
