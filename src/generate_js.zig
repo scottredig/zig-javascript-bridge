@@ -398,9 +398,9 @@ pub fn main() !void {
 
         const name = np.slice;
         try writer.writeAll("    {\n");
-        try writer.writeAll("      const ptr = initialView.getUint32(instance.exports.");
+        try writer.writeAll("      const ptr = instance.exports.");
         try writer.writeAll(global);
-        try writer.writeAll(".value, true);\n");
+        try writer.writeAll(".value;\n");
 
         try writer.writeAll("      Object.defineProperty(this.exports, \"");
         try writer.writeAll(name);
