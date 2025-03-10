@@ -1,8 +1,9 @@
 .{
-    .name = "simple-example",
+    .name = .simple_example,
     .version = "0.0.0",
+    .fingerprint = 0x24a585647bbf2e4e,
     .dependencies = .{
-        .zjb = .{
+        .javascript_bridge = .{
             .path = "../",
         },
     },

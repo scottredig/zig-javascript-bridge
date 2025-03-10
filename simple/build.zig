@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const dir = std.Build.InstallDir.bin;
 
-    const zjb = b.dependency("zjb", .{});
+    const zjb = b.dependency("javascript_bridge", .{});
 
     const simple = b.addExecutable(.{
         .name = "simple",

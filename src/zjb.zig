@@ -60,7 +60,7 @@ pub fn exportGlobal(comptime name: []const u8, comptime value: anytype) void {
 
 pub fn exportFn(comptime name: []const u8, comptime f: anytype) void {
     comptime var export_name: []const u8 = "zjb_fn_";
-    const type_info = @typeInfo(@TypeOf(f)).Fn;
+    const type_info = @typeInfo(@typeInfo(@TypeOf(f)).pointer.child).@"fn";
     validateToJavascriptReturnType(type_info.return_type orelse void);
     inline for (type_info.params) |param| {
         validateFromJavascriptArgumentType(param.type orelse void);
@@ -104,10 +104,10 @@ pub fn u8ClampedArrayView(data: []const u8) Handle {
 
 pub fn dataView(data: anytype) Handle {
     switch (@typeInfo(@TypeOf(data))) {
-        .Pointer => |ptr| {
-            if (ptr.size == .One) {
+        .pointer => |ptr| {
+            if (ptr.size == .one) {
                 return zjb.dataview(data, @sizeOf(ptr.child));
-            } else if (ptr.size == .Slice) {
+            } else if (ptr.size == .slice) {
                 return zjb.dataview(data.ptr, data.len * @sizeOf(ptr.child));
             } else {
                 @compileError("dataview pointers must be single objects or slices, got: " ++ @typeName(@TypeOf(data)));
@@ -227,7 +227,7 @@ pub const Handle = enum(i32) {
 
     fn invoke(handle: Handle, args: anytype, comptime RetType: type, comptime prefix: []const u8, comptime suffix: []const u8) RetType {
         validateFromJavascriptReturnType(RetType);
-        const fields = comptime @typeInfo(@TypeOf(args)).Struct.fields;
+        const fields = comptime @typeInfo(@TypeOf(args)).@"struct".fields;
         comptime var call_params: [fields.len + 1]std.builtin.Type.Fn.Param = undefined;
         comptime var extern_name: []const u8 = prefix;
 
@@ -247,7 +247,7 @@ pub const Handle = enum(i32) {
             extern_name = extern_name ++ comptime shortTypeName(field.type);
         }
 
-        const F = @Type(.{ .Fn = .{
+        const F = @Type(.{ .@"fn" = .{
             .calling_convention = .C,
             .is_generic = false,
             .is_var_args = false,
@@ -301,17 +301,24 @@ fn shortTypeName(comptime T: type) []const u8 {
         Handle, ConstHandle => "o",
         void => "v",
         bool => "b",
-        // The number types map to the same name, even though
-        // the function signatures are different.  Zig and Wasm
-        // handle this just fine, and produces fewer unique methods
-        // in javascript so there's no reason not to do it.
-        i32, i64, f32, f64, comptime_int, comptime_float => "n",
+        // // The number types map to the same name, even though
+        // // the function signatures are different.  Zig and Wasm
+        // // handle this just fine, and produces fewer unique methods
+        // // in javascript so there's no reason not to do it.
+        // i32, i64, f32, f64, comptime_int, comptime_float => "n",
+
+        // The above should be true, but 0.14.0 broke it.  See https://github.com/scottredig/zig-javascript-bridge/issues/14
+        i32 => "i32",
+        i64 => "i64",
+        f32 => "f32",
+        f64, comptime_float, comptime_int => "f64",
+
         else => unreachable,
     };
 }
 
 fn mapType(comptime T: type) type {
-    if (T == comptime_int or T == comptime_float) {
+    if (T == comptime_float or T == comptime_int) {
         return f64;
     }
     return T;
