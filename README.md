@@ -18,7 +18,7 @@ console.log("Hello from Zig");
 
 ## Project Status
 
-ZJB is fully functional and is ready to be used in other projects.  However 1.0 will not be tagged until there is significant enough usage that confidence in the API not needing further changes is high.
+ZJB is fully functional and is ready to be used in other projects.  However 1.0 will not be tagged until Zig is 1.0, and there is significant enough usage that confidence in the API not needing further changes is high.
 
 ## Why
 
@@ -37,7 +37,7 @@ This package is clearly inspired by Go's solution to this problem: https://pkg.g
 
 As of March 2025, zjb is only known to work with Zig 0.14.0.
 
-The simple folder provides a good template to start from.  You'll need to update to reference to zjb in `build.zig.zon`.  There's currently no release schedule for point releases, so you should use the latest available code.  Eg, copy the entire `simple` folder into your empty project, then run `zig fetch --save=zjb https://github.com/scottredig/zig-javascript-bridge/archive/<put hash of latest commit to main here>.zip`
+The simple folder provides a good template to start from.  You'll need to update to reference to zjb in `build.zig.zon`.  There's currently no release schedule for point releases, so you should use the latest available code.  Eg, copy the entire `simple` folder into your empty project, then run `zig fetch --save=zjb git+https://github.com/scottredig/zig-javascript-bridge`
 
 Call into Javascript using `zjb`, generate the Javascript side code, and then build an html page to combine them.
 
@@ -49,7 +49,7 @@ An example which demonstrates usage of all of the components of `zjb` is in the 
 - `build.zig`'s example for how to set up your build file.
 - `static` includes HTML and Javascript files to run the example.
 
-To view the example in action, run `zig build example` from inside the example folder.  Then host a webserver from `zig-out/bin`.
+`zig build` from inside the example folder builds the example to `zig-out`.  As a webserver is required to view the samples in action, you can instead use `zig build serve` to build and host the example locally.
 
 ### Details
 
