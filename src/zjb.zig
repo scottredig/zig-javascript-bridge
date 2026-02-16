@@ -227,33 +227,25 @@ pub const Handle = enum(i32) {
 
     fn invoke(handle: Handle, args: anytype, comptime RetType: type, comptime prefix: []const u8, comptime suffix: []const u8) RetType {
         validateFromJavascriptReturnType(RetType);
-        const fields = comptime @typeInfo(@TypeOf(args)).@"struct".fields;
-        comptime var call_params: [fields.len + 1]std.builtin.Type.Fn.Param = undefined;
         comptime var extern_name: []const u8 = prefix;
+        const F = comptime blk: {
+            const fields = @typeInfo(@TypeOf(args)).@"struct".fields;
+            var param_types: [fields.len + 1]type = undefined;
+            var param_attributes: [fields.len + 1]std.builtin.Type.Fn.Param.Attributes = @splat(.{});
 
-        call_params[fields.len] = .{
-            .is_generic = false,
-            .is_noalias = false,
-            .type = Handle,
+            for (fields, (&param_types)[0..fields.len]) |field, *T| {
+                validateToJavascriptArgumentType(field.type);
+                T.* = mapType(field.type);
+                extern_name = extern_name ++ shortTypeName(field.type);
+            }
+
+            param_attributes[fields.len] = .{};
+            param_types[fields.len] = Handle;
+
+            break :blk @Fn(&param_types, &param_attributes, RetType, .{
+                .@"callconv" = .c,
+            });
         };
-
-        inline for (fields, 0..) |field, i| {
-            validateToJavascriptArgumentType(field.type);
-            call_params[i] = .{
-                .is_generic = false,
-                .is_noalias = false,
-                .type = mapType(field.type),
-            };
-            extern_name = extern_name ++ comptime shortTypeName(field.type);
-        }
-
-        const F = @Type(.{ .@"fn" = .{
-            .calling_convention = .c,
-            .is_generic = false,
-            .is_var_args = false,
-            .return_type = RetType,
-            .params = &call_params,
-        } });
         extern_name = extern_name ++ "_" ++ comptime shortTypeName(RetType) ++ suffix;
 
         const f = @extern(*const F, .{ .library_name = "zjb", .name = extern_name });

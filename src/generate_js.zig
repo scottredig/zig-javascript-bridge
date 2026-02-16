@@ -1,84 +1,87 @@
 const std = @import("std");
 
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const alloc = gpa.allocator();
-
-    const args = try std.process.argsAlloc(alloc);
-    defer std.process.argsFree(alloc, args);
+pub fn main(init: std.process.Init) !void {
+    const gpa = init.gpa;
+    const args = try init.minimal.args.toSlice(init.arena.allocator());
+    const io = init.io;
 
     if (args.len != 4) {
         return ExtractError.BadArguments;
     }
 
     var importFunctions: std.ArrayList([]const u8) = .{};
-    defer importFunctions.deinit(alloc);
+    defer importFunctions.deinit(gpa);
+    defer for (importFunctions.items) |item| gpa.free(item);
     var exportFunctions: std.ArrayList([]const u8) = .{};
-    defer exportFunctions.deinit(alloc);
+    defer exportFunctions.deinit(gpa);
+    defer for (exportFunctions.items) |item| gpa.free(item);
     var exportGlobals: std.ArrayList([]const u8) = .{};
-    defer exportGlobals.deinit(alloc);
+    defer exportGlobals.deinit(gpa);
+    defer for (exportGlobals.items) |item| gpa.free(item);
 
     {
-        var file = try std.fs.cwd().openFile(args[3], .{});
-        defer file.close();
-
-        const bytes = try file.readToEndAlloc(alloc, std.math.maxInt(usize));
-        defer alloc.free(bytes);
-        var r = Reader{ .slice = bytes };
+        // Read whole file instead of streaming, since the code below needs to hold multiple
+        // byte buffers at once before knowing if things need to be dup'd.
+        const bytes = try std.Io.Dir.cwd().readFileAlloc(io, args[3], gpa, .unlimited);
+        defer gpa.free(bytes);
+        var r: std.Io.Reader = .fixed(bytes);
 
         {
-            const magic = try r.bytes(4);
+            const magic = try r.take(4);
             if (!std.mem.eql(u8, magic, &[4]u8{ 0x00, 0x61, 0x73, 0x6d })) {
                 return ExtractError.WasmWrongMagic;
             }
 
-            const version = try r.bytes(4);
+            const version = try r.take(4);
             if (!std.mem.eql(u8, version, &[4]u8{ 0x01, 0x00, 0x00, 0x00 })) {
                 return ExtractError.WasmWrongVersion;
             }
         }
 
-        while (r.slice.len > 0) {
-            const section_id = try r.byte();
-            const section_length = try r.getU32();
+        while (true) {
+            const section_id = try (r.takeByte() catch |err| switch (err) {
+                error.EndOfStream => break,
+                else => err,
+            });
+            const section_length = try r.takeLeb128(u32);
             if (section_id == 2) {
-                const import_count = try r.getU32();
+                const import_count = try r.takeLeb128(u32);
                 for (0..import_count) |_| {
-                    const module_length = try r.getU32();
-                    const module = try r.bytes(module_length);
+                    const module_length = try r.takeLeb128(u32);
+                    const module = try r.take(module_length);
 
-                    const name_length = try r.getU32();
-                    const name = try r.bytes(name_length);
+                    const name_length = try r.takeLeb128(u32);
+                    const name = try r.take(name_length);
 
-                    const desc_type = try r.byte();
-                    const desc_index = try r.getU32();
+                    const desc_type = try r.takeByte();
+                    const desc_index = try r.takeLeb128(u32);
                     _ = desc_index;
 
                     if (std.mem.eql(u8, module, "zjb")) {
                         if (desc_type != 0) { // Not a function?
                             return ExtractError.ImportTypeNotSupported;
                         }
-                        try importFunctions.append(alloc, try alloc.dupe(u8, name));
+                        try importFunctions.append(gpa, try gpa.dupe(u8, name));
                     }
                 }
             } else if (section_id == 7) {
-                const export_count = try r.getU32();
+                const export_count = try r.takeLeb128(u32);
                 for (0..export_count) |_| {
-                    const name_length = try r.getU32();
-                    const name = try r.bytes(name_length);
+                    const name_length = try r.takeLeb128(u32);
+                    const name = try r.take(name_length);
 
-                    const desc_type = try r.byte();
-                    const desc_index = try r.getU32();
+                    const desc_type = try r.takeByte();
+                    const desc_index = try r.takeLeb128(u32);
                     _ = desc_index;
 
                     if (desc_type == 0 and std.mem.startsWith(u8, name, "zjb_fn")) {
-                        try exportFunctions.append(alloc, try alloc.dupe(u8, name));
+                        try exportFunctions.append(gpa, try gpa.dupe(u8, name));
                     } else if (std.mem.startsWith(u8, name, "zjb_global")) {
-                        try exportGlobals.append(alloc, try alloc.dupe(u8, name));
+                        try exportGlobals.append(gpa, try gpa.dupe(u8, name));
                     }
                 }
             } else {
-                _ = try r.bytes(section_length);
+                _ = try r.discardAll(section_length);
             }
         }
     }
@@ -87,10 +90,10 @@ pub fn main() !void {
     std.sort.insertion([]const u8, exportFunctions.items, {}, strBefore);
     std.sort.insertion([]const u8, exportGlobals.items, {}, strBefore);
 
-    var out_file = try std.fs.createFileAbsolute(args[1], .{});
-    defer out_file.close();
+    var out_file = try std.Io.Dir.createFileAbsolute(io, args[1], .{});
+    defer out_file.close(io);
     var writer_buffer: [1024]u8 = undefined;
-    var file_writer = out_file.writer(&writer_buffer);
+    var file_writer = out_file.writer(io, &writer_buffer);
     const writer = &file_writer.interface;
 
     try writer.writeAll("const ");
@@ -120,7 +123,7 @@ pub fn main() !void {
 
     var lastFunc: []const u8 = "";
     var func_args: std.ArrayList(ArgType) = .{};
-    defer func_args.deinit(alloc);
+    defer func_args.deinit(gpa);
 
     implement_functions: for (importFunctions.items) |func| {
         if (std.mem.eql(u8, lastFunc, func)) {
@@ -173,7 +176,7 @@ pub fn main() !void {
 
         if (method != .get) {
             while (!(np.maybe("_") or np.slice.len == 0)) {
-                try func_args.append(alloc, try np.mustArgType());
+                try func_args.append(gpa, try np.mustArgType());
             }
         }
         switch (method) {
@@ -286,7 +289,7 @@ pub fn main() !void {
     try writer.writeAll("    this.exports = {\n");
 
     var export_names: std.ArrayList([]const u8) = .{};
-    defer export_names.deinit(alloc);
+    defer export_names.deinit(gpa);
 
     for (exportFunctions.items) |func| {
         func_args.clearRetainingCapacity();
@@ -295,14 +298,14 @@ pub fn main() !void {
         try np.must("zjb_fn_");
 
         while (!(np.maybe("_") or np.slice.len == 0)) {
-            try func_args.append(alloc, try np.mustArgType());
+            try func_args.append(gpa, try np.mustArgType());
         }
 
         const ret_type = try np.mustArgType();
         try np.must("_");
 
         const name = np.slice;
-        try export_names.append(alloc, name);
+        try export_names.append(gpa, name);
 
         //////////////////////////////////
 
@@ -464,13 +467,13 @@ pub fn main() !void {
         for (0..export_names.items.len - 1) |i| {
             if (std.mem.eql(u8, export_names.items[i], export_names.items[i + 1])) {
                 std.debug.print("ERROR: function export name used twice: {s}.\n", .{export_names.items[i]});
-                std.posix.exit(1);
+                std.process.exit(1);
             }
         }
     }
 
     try file_writer.end();
-    try out_file.sync();
+    try out_file.sync(io);
 }
 
 fn writeArg(writer: anytype, arg: ArgType, i: usize) !void {
@@ -489,41 +492,6 @@ fn writeArg(writer: anytype, arg: ArgType, i: usize) !void {
         },
     }
 }
-
-const Reader = struct {
-    slice: []const u8,
-
-    fn getU32(self: *Reader) !u32 {
-        var r: u32 = 0;
-        var offset: u8 = 0;
-        while (true) {
-            const b = try self.byte();
-            r |= @as(u32, b & 0b0111_1111) << @intCast(offset);
-            if (b < 0b1000_0000) {
-                return r;
-            }
-            offset += 7;
-        }
-    }
-
-    fn byte(self: *Reader) !u8 {
-        if (self.slice.len < 1) {
-            return ExtractError.UnexpectedEndOfFile;
-        }
-        const r = self.slice[0];
-        self.slice = self.slice[1..];
-        return r;
-    }
-
-    fn bytes(self: *Reader, length: u32) ExtractError![]const u8 {
-        if (self.slice.len < length) {
-            return ExtractError.UnexpectedEndOfFile;
-        }
-        const r = self.slice[0..length];
-        self.slice = self.slice[length..];
-        return r;
-    }
-};
 
 const ExtractError = error{
     BadArguments,
