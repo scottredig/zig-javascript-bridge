@@ -9,13 +9,13 @@ pub fn main(init: std.process.Init) !void {
         return ExtractError.BadArguments;
     }
 
-    var importFunctions: std.ArrayList([]const u8) = .{};
+    var importFunctions: std.ArrayList([]const u8) = .empty;
     defer importFunctions.deinit(gpa);
     defer for (importFunctions.items) |item| gpa.free(item);
-    var exportFunctions: std.ArrayList([]const u8) = .{};
+    var exportFunctions: std.ArrayList([]const u8) = .empty;
     defer exportFunctions.deinit(gpa);
     defer for (exportFunctions.items) |item| gpa.free(item);
-    var exportGlobals: std.ArrayList([]const u8) = .{};
+    var exportGlobals: std.ArrayList([]const u8) = .empty;
     defer exportGlobals.deinit(gpa);
     defer for (exportGlobals.items) |item| gpa.free(item);
 
@@ -122,7 +122,7 @@ pub fn main(init: std.process.Init) !void {
     );
 
     var lastFunc: []const u8 = "";
-    var func_args: std.ArrayList(ArgType) = .{};
+    var func_args: std.ArrayList(ArgType) = .empty;
     defer func_args.deinit(gpa);
 
     implement_functions: for (importFunctions.items) |func| {
@@ -288,7 +288,7 @@ pub fn main(init: std.process.Init) !void {
 
     try writer.writeAll("    this.exports = {\n");
 
-    var export_names: std.ArrayList([]const u8) = .{};
+    var export_names: std.ArrayList([]const u8) = .empty;
     defer export_names.deinit(gpa);
 
     for (exportFunctions.items) |func| {
