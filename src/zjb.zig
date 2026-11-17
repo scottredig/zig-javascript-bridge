@@ -62,9 +62,9 @@ pub fn exportFn(comptime name: []const u8, comptime f: anytype) void {
     comptime var export_name: []const u8 = "zjb_fn_";
     const type_info = @typeInfo(@typeInfo(@TypeOf(f)).pointer.child).@"fn";
     validateToJavascriptReturnType(type_info.return_type orelse void);
-    inline for (type_info.params) |param| {
-        validateFromJavascriptArgumentType(param.type orelse void);
-        export_name = export_name ++ comptime shortTypeName(param.type orelse @compileError("zjb exported functions need specified types."));
+    inline for (type_info.param_types) |param_type| {
+        validateFromJavascriptArgumentType(param_type orelse void);
+        export_name = export_name ++ comptime shortTypeName(param_type orelse @compileError("zjb exported functions need specified types."));
     }
     export_name = export_name ++ "_" ++ comptime shortTypeName(type_info.return_type orelse null) ++ "_" ++ name;
 
@@ -229,14 +229,14 @@ pub const Handle = enum(i32) {
         validateFromJavascriptReturnType(RetType);
         comptime var extern_name: []const u8 = prefix;
         const F = comptime blk: {
-            const fields = @typeInfo(@TypeOf(args)).@"struct".fields;
+            const fields = @typeInfo(@TypeOf(args)).@"struct".field_types;
             var param_types: [fields.len + 1]type = undefined;
-            var param_attributes: [fields.len + 1]std.builtin.Type.Fn.Param.Attributes = @splat(.{});
+            var param_attributes: [fields.len + 1]std.builtin.Type.Fn.ParamAttributes = @splat(.{});
 
             for (fields, (&param_types)[0..fields.len]) |field, *T| {
-                validateToJavascriptArgumentType(field.type);
-                T.* = mapType(field.type);
-                extern_name = extern_name ++ shortTypeName(field.type);
+                validateToJavascriptArgumentType(field);
+                T.* = mapType(field);
+                extern_name = extern_name ++ shortTypeName(field);
             }
 
             param_attributes[fields.len] = .{};

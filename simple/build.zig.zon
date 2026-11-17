@@ -7,8 +7,8 @@
             .path = "../",
         },
         .demo_webserver = .{
-            .url = "git+https://github.com/scottredig/zig-demo-webserver#320269352f1c23a186d826743a720f97a492a08d",
-            .hash = "demo_webserver-0.0.0-s8bjD7QwAADNnOiRQPqTXBLHX3YYaK7DhT8oDHvDRFCz",
+            .url = "git+https://github.com/scottredig/zig-demo-webserver#f298d8b9c2666c30678ae2b2b22966b805a6d464",
+            .hash = "demo_webserver-0.0.0-s8bjD5MvAABPnyjerPPIi2zv5iP7tEeTG47bxib2vvhx",
         },
     },
     .paths = .{
